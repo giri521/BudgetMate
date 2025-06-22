@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Login / Register</title>
+  <script src="https://cdn.jsdelivr.net/npm/backendless@7"></script>
+  <style>
+    body {
+      background-color: #0f172a;
+      color: white;
+      font-family: sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .container {
+      background-color: #1e293b;
+      padding: 20px;
+      border-radius: 10px;
+      width: 300px;
+      text-align: center;
+      box-shadow: 0 0 10px #38bdf8;
+    }
+    input {
+      display: block;
+      width: 100%;
+      margin: 10px 0;
+      padding: 8px;
+      border-radius: 5px;
+      border: none;
+    }
+    button {
+      margin: 10px 5px;
+      padding: 10px;
+      border: none;
+      border-radius: 5px;
+      background-color: #38bdf8;
+      color: #0f172a;
+      font-weight: bold;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Room Expense Tracker</h2>
+    <div class="form-group">
+      <input type="email" id="email" placeholder="Email">
+      <input type="password" id="password" placeholder="Password">
+      <input type="text" id="name" placeholder="Name (only for register)">
+    </div>
+    <div class="buttons">
+      <button onclick="loginUser()">Login</button>
+      <button onclick="registerUser()">Register</button>
+    </div>
+    <p id="msg"></p>
+  </div>
+
+  <script>
+    const APP_ID = "3E6C2C39-6779-4034-B008-C3043326DE7A";
+    const API_KEY = "ACFC4906-9EF5-4356-9F9D-42B8D7397E0B";
+
+    Backendless.initApp(APP_ID, API_KEY);
+
+    function loginUser() {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      
+      Backendless.UserService.login(email, password, true)
+        .then(user => {
+          localStorage.setItem("user", JSON.stringify(user));
+          window.location.href = "dashboard.html";
+        })
+        .catch(err => {
+          document.getElementById("msg").textContent = err.message;
+        });
+    }
+
+    function registerUser() {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      const name = document.getElementById("name").value;
+
+      const user = new Backendless.User();
+      user.email = email;
+      user.password = password;
+      user.name = name;
+
+      Backendless.UserService.register(user)
+        .then(() => {
+          document.getElementById("msg").textContent = "Registration successful. Please login.";
+        })
+        .catch(err => {
+          document.getElementById("msg").textContent = err.message;
+        });
+    }
+  </script>
+</body>
+</html>

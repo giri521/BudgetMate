@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Download Room Transactions | PDF Export</title>
+  <script src="https://cdn.jsdelivr.net/npm/backendless@7"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <style>
+    :root {
+      --primary: #3b82f6;
+      --primary-dark: #1e3a8a;
+      --primary-light: #60a5fa;
+      --background: #0f172a;
+      --card-bg: #1e293b;
+      --text-primary: #f8fafc;
+      --success: #10b981;
+      --danger: #ef4444;
+      --border-radius: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+
+    body {
+      background-color: var(--background);
+      color: var(--text-primary);
+      min-height: 100vh;
+      padding: 2rem;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    h1 {
+      color: var(--primary-light);
+      font-size: 1.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .back-btn {
+      background-color: var(--primary-dark);
+      color: white;
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: var(--border-radius);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+      transition: background-color 0.2s;
+    }
+
+    .back-btn:hover {
+      background-color: var(--primary);
+    }
+
+    .controls {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .date-filter {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      background-color: var(--card-bg);
+      padding: 1rem;
+      border-radius: var(--border-radius);
+      flex-grow: 1;
+    }
+
+    .date-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    label {
+      font-weight: 500;
+      font-size: 0.9rem;
+    }
+
+    input[type="date"] {
+      padding: 0.5rem;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: var(--border-radius);
+      background-color: var(--background);
+      color: white;
+      font-family: inherit;
+    }
+
+    .btn {
+      padding: 0.5rem 1rem;
+      border-radius: var(--border-radius);
+      border: none;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-primary {
+      background-color: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background-color: #2563eb;
+    }
+
+    .btn-success {
+      background-color: var(--success);
+      color: white;
+    }
+
+    .btn-success:hover {
+      background-color: #0d9488;
+    }
+
+    .tables-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .table-card {
+      background-color: var(--card-bg);
+      border-radius: var(--border-radius);
+      overflow: hidden;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .table-header {
+      padding: 1rem;
+      background-color: rgba(0,0,0,0.2);
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .table-header h2 {
+      font-size: 1.25rem;
+      color: var(--primary-light);
+    }
+
+    .table-wrapper {
+      overflow-x: auto;
+      padding: 1rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 500px;
+    }
+
+    th {
+      background-color: rgba(59, 130, 246, 0.2);
+      padding: 0.75rem 1rem;
+      text-align: left;
+      font-weight: 500;
+      color: var(--primary-light);
+    }
+
+    td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover {
+      background-color: rgba(255,255,255,0.03);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 2rem;
+      color: rgba(255,255,255,0.5);
+    }
+
+    .loading {
+      display: inline-block;
+      width: 1rem;
+      height: 1rem;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      border-top-color: var(--primary);
+      animation: spin 1s linear infinite;
+      margin-right: 0.5rem;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 1rem;
+      }
+
+      .tables-container {
+        grid-template-columns: 1fr;
+      }
+
+      .date-filter {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>
+        <i class="fas fa-file-pdf"></i>
+        Download Room Transactions
+      </h1>
+      <a href="room_dashboard.html" class="back-btn">
+        <i class="fas fa-arrow-left"></i>
+        Back to Dashboard
+      </a>
+    </header>
+
+    <div class="controls">
+      <div class="date-filter">
+        <div class="date-group">
+          <label for="fromDate"><i class="fas fa-calendar-alt"></i> From:</label>
+          <input type="date" id="fromDate" />
+        </div>
+        <div class="date-group">
+          <label for="toDate"><i class="fas fa-calendar-alt"></i> To:</label>
+          <input type="date" id="toDate" />
+        </div>
+        <button class="btn btn-primary" onclick="filterTransactions()">
+          <i class="fas fa-filter"></i>
+          Filter
+        </button>
+      </div>
+      <button class="btn btn-success" onclick="downloadPDF()">
+        <i class="fas fa-download"></i>
+        Download PDF
+      </button>
+    </div>
+
+    <div class="tables-container" id="pdf-content">
+      <div class="table-card">
+        <div class="table-header">
+          <i class="fas fa-plus-circle"></i>
+          <h2>Added Money</h2>
+        </div>
+        <div class="table-wrapper">
+          <table id="addTable">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Amount</th>
+                <th>Payment Type</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td colspan="4" class="empty-state">
+                  <i class="fas fa-info-circle"></i>
+                  Select date range and click Filter to load transactions
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <div class="table-header">
+          <i class="fas fa-minus-circle"></i>
+          <h2>Spent Money</h2>
+        </div>
+        <div class="table-wrapper">
+          <table id="spentTable">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Amount</th>
+                <th>Category</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td colspan="4" class="empty-state">
+                  <i class="fas fa-info-circle"></i>
+                  Select date range and click Filter to load transactions
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Initialize Backendless
+    Backendless.initApp({
+      appId: "3E6C2C39-6779-4034-B008-C3043326DE7A",
+      apiKey: "ACFC4906-9EF5-4356-9F9D-42B8D7397E0B"
+    });
+
+    // Global variables
+    let roomCode = null;
+    let currentTransactions = [];
+
+    // Set default dates (last 30 days)
+    function setDefaultDates() {
+      const today = new Date();
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(today.getDate() - 30);
+
+      document.getElementById('toDate').valueAsDate = today;
+      document.getElementById('fromDate').valueAsDate = thirtyDaysAgo;
+    }
+
+    // Format date for display
+    function formatDate(timestamp) {
+      const date = new Date(timestamp);
+      return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    }
+
+    // Filter transactions by date range
+    async function filterTransactions() {
+      try {
+        const fromDateInput = document.getElementById('fromDate');
+        const toDateInput = document.getElementById('toDate');
+        
+        if (!fromDateInput.value || !toDateInput.value) {
+          alert('Please select both start and end dates');
+          return;
+        }
+
+        const fromDate = new Date(fromDateInput.value).getTime();
+        const toDate = new Date(toDateInput.value).getTime() + 86400000; // Add 1 day to include entire end date
+
+        if (fromDate > toDate) {
+          alert('End date must be after start date');
+          return;
+        }
+
+        // Show loading state
+        document.querySelectorAll('#addTable tbody, #spentTable tbody').forEach(tbody => {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="4" class="empty-state">
+                <span class="loading"></span>
+                Loading transactions...
+              </td>
+            </tr>
+          `;
+        });
+
+        const user = await Backendless.UserService.getCurrentUser();
+        if (!user) {
+          window.location.href = "index.html";
+          return;
+        }
+
+        const roomId = new URLSearchParams(window.location.search).get('roomId');
+        if (!roomId) {
+          window.location.href = "room_dashboard.html";
+          return;
+        }
+
+        const room = await Backendless.Data.of("Rooms").findById(roomId);
+        if (!room) {
+          alert('Room not found');
+          return;
+        }
+
+        roomCode = room.roomCode;
+
+        const query = Backendless.DataQueryBuilder.create()
+          .setWhereClause(`roomCode = '${roomCode}' AND created >= ${fromDate} AND created <= ${toDate}`)
+          .setSortBy(["created DESC"]);
+
+        currentTransactions = await Backendless.Data.of("Transactions").find(query);
+        renderTransactions(currentTransactions);
+
+      } catch (error) {
+        console.error('Error filtering transactions:', error);
+        document.querySelectorAll('#addTable tbody, #spentTable tbody').forEach(tbody => {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="4" class="empty-state" style="color: var(--danger)">
+                <i class="fas fa-exclamation-circle"></i>
+                Failed to load transactions
+              </td>
+            </tr>
+          `;
+        });
+      }
+    }
+
+    // Render transactions to tables
+    function renderTransactions(transactions) {
+      const addTableBody = document.querySelector('#addTable tbody');
+      const spentTableBody = document.querySelector('#spentTable tbody');
+
+      addTableBody.innerHTML = '';
+      spentTableBody.innerHTML = '';
+
+      if (transactions.length === 0) {
+        addTableBody.innerHTML = `
+          <tr>
+            <td colspan="4" class="empty-state">
+              <i class="fas fa-inbox"></i>
+              No transactions found in this date range
+            </td>
+          </tr>
+        `;
+        spentTableBody.innerHTML = `
+          <tr>
+            <td colspan="4" class="empty-state">
+              <i class="fas fa-inbox"></i>
+              No transactions found in this date range
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      transactions.forEach(transaction => {
+        const row = `
+          <tr>
+            <td>${transaction.userName || '-'}</td>
+            <td>₹${transaction.amount.toFixed(2)}</td>
+            <td>${transaction.type === 'add' ? (transaction.paidType || '-') : (transaction.category || '-')}</td>
+            <td>${formatDate(transaction.created)}</td>
+          </tr>
+        `;
+
+        if (transaction.type === 'add') {
+          addTableBody.insertAdjacentHTML('beforeend', row);
+        } else if (transaction.type === 'spent') {
+          spentTableBody.insertAdjacentHTML('beforeend', row);
+        }
+      });
+    }
+
+    // Generate and download PDF
+    async function downloadPDF() {
+      if (currentTransactions.length === 0) {
+        alert('No transactions to download. Please filter transactions first.');
+        return;
+      }
+
+      try {
+        const element = document.getElementById('pdf-content');
+        const { jsPDF } = window.jspdf;
+        
+        // Show loading state
+        const originalButtonText = document.querySelector('.btn-success').innerHTML;
+        document.querySelector('.btn-success').innerHTML = `
+          <span class="loading"></span>
+          Generating PDF...
+        `;
+        document.querySelector('.btn-success').disabled = true;
+
+        // Create PDF
+        const pdf = new jsPDF('landscape', 'pt', 'a4');
+        
+        // Add title and date range
+        const fromDate = document.getElementById('fromDate').value;
+        const toDate = document.getElementById('toDate').value;
+        
+        pdf.setFontSize(16);
+        pdf.setTextColor(59, 130, 246);
+        pdf.text('Room Transactions Report', 40, 40);
+        
+        pdf.setFontSize(12);
+        pdf.setTextColor(0, 0, 0);
+        pdf.text(`Date Range: ${new Date(fromDate).toLocaleDateString()} to ${new Date(toDate).toLocaleDateString()}`, 40, 60);
+        
+        // Add content
+        const canvas = await html2canvas(element, {
+          backgroundColor: '#1e293b',
+          scale: 1.5,
+          logging: false,
+          useCORS: true
+        });
+        
+        const imgData = canvas.toDataURL('image/png');
+        const pdfWidth = pdf.internal.pageSize.getWidth() - 80;
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        
+        pdf.addImage(imgData, 'PNG', 40, 80, pdfWidth, pdfHeight);
+        
+        // Add footer
+        const date = new Date().toLocaleString();
+        pdf.setFontSize(10);
+        pdf.setTextColor(100, 100, 100);
+        pdf.text(`Generated on ${date}`, pdf.internal.pageSize.getWidth() - 100, pdf.internal.pageSize.getHeight() - 20);
+        
+        // Save PDF
+        pdf.save(`Room_Transactions_${fromDate}_to_${toDate}.pdf`);
+
+      } catch (error) {
+        console.error('Error generating PDF:', error);
+        alert('Failed to generate PDF. Please try again.');
+      } finally {
+        // Restore button state
+        document.querySelector('.btn-success').innerHTML = originalButtonText;
+        document.querySelector('.btn-success').disabled = false;
+      }
+    }
+
+    // Initialize the page
+    document.addEventListener('DOMContentLoaded', () => {
+      setDefaultDates();
+      
+      // Add event listeners for Enter key on date inputs
+      document.getElementById('fromDate').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') filterTransactions();
+      });
+      
+      document.getElementById('toDate').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') filterTransactions();
+      });
+    });
+  </script>
+</body>
+</html>

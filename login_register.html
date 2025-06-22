@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login & Register BudgetMate</title>
+  <script src="https://cdn.jsdelivr.net/npm/backendless@7"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #3b82f6;
+      --primary-dark: #1e3a8a;
+      --primary-light: #60a5fa;
+      --background: #0f172a;
+      --card-bg: #1e293b;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--background);
+      color: var(--text-primary);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      line-height: 1.6;
+      padding: 20px;
+    }
+    
+    .card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+      width: 100%;
+      max-width: 400px;
+      transition: transform 0.3s ease;
+    }
+    
+    .card:hover {
+      transform: translateY(-5px);
+    }
+    
+    h2 {
+      color: var(--primary);
+      font-size: 1.8rem;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 25px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    
+    .tabs {
+      display: flex;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      margin-bottom: 25px;
+      overflow: hidden;
+    }
+    
+    .tab-btn {
+      flex: 1;
+      padding: 12px;
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 0.9rem;
+    }
+    
+    .tab-btn.active {
+      background: var(--primary);
+      color: white;
+    }
+    
+    .tab-btn:hover:not(.active) {
+      background: rgba(255, 255, 255, 0.1);
+    }
+    
+    .form {
+      display: none;
+      flex-direction: column;
+    }
+    
+    .form.active {
+      display: flex;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+    }
+    
+    input {
+      width: 100%;
+      padding: 12px 15px;
+      margin-bottom: 15px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-size: 1rem;
+      transition: all 0.3s ease;
+    }
+    
+    input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+    }
+    
+    .submit-btn {
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      width: 100%;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    
+    .submit-btn:hover {
+      background-color: #2563eb;
+      transform: translateY(-2px);
+    }
+    
+    .message {
+      margin-top: 20px;
+      padding: 12px 15px;
+      border-radius: 8px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-align: center;
+      font-size: 0.95rem;
+    }
+    
+    .success {
+      background-color: rgba(16, 185, 129, 0.2);
+      color: var(--success);
+    }
+    
+    .error {
+      background-color: rgba(239, 68, 68, 0.2);
+      color: var(--danger);
+    }
+    
+    .note {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      text-align: center;
+      margin-top: 15px;
+      line-height: 1.4;
+    }
+    
+    .note b {
+      color: var(--primary-light);
+    }
+    
+    /* Mobile-specific styles */
+    @media (max-width: 600px) {
+      body {
+        padding: 15px;
+        align-items: flex-start;
+      }
+      
+      .card {
+        padding: 25px 20px;
+        margin-top: 20px;
+      }
+      
+      h2 {
+        font-size: 1.5rem;
+        margin-bottom: 20px;
+      }
+      
+      .tab-btn {
+        padding: 10px;
+        font-size: 0.85rem;
+      }
+      
+      input {
+        padding: 10px 12px;
+        margin-bottom: 12px;
+        font-size: 0.95rem;
+      }
+      
+      .submit-btn {
+        padding: 10px 15px;
+        font-size: 0.95rem;
+      }
+      
+      .message {
+        margin-top: 15px;
+        padding: 10px 12px;
+        font-size: 0.9rem;
+      }
+    }
+    
+    /* Desktop-specific enhancements */
+    @media (min-width: 601px) {
+      .card {
+        min-width: 380px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <h2><i class="fas fa-user-circle"></i> Welcome To BudgetMate</h2>
+  
+  <div class="tabs">
+    <button id="loginTab" class="tab-btn active">
+      <i class="fas fa-sign-in-alt"></i> Login
+    </button>
+    <button id="registerTab" class="tab-btn">
+      <i class="fas fa-user-plus"></i> Register
+    </button>
+  </div>
+
+  <!-- Login Form -->
+  <form id="loginForm" class="form active">
+    <label for="loginEmail">Email</label>
+    <input type="email" id="loginEmail" placeholder="Enter your email" required>
+    
+    <label for="loginPassword">Password</label>
+    <input type="password" id="loginPassword" placeholder="Enter your password" required>
+    
+    <button type="submit" class="submit-btn">
+      <i class="fas fa-sign-in-alt"></i> Login
+    </button>
+    
+    <div class="note">Forgot password? Contact: <br><b>girivennapusa8@gmail.com</b></div>
+  </form>
+
+  <!-- Register Form -->
+  <form id="registerForm" class="form">
+    <label for="registerUsername">Username</label>
+    <input type="text" id="registerUsername" placeholder="Choose a username" required>
+    
+    <label for="registerEmail">Email</label>
+    <input type="email" id="registerEmail" placeholder="Enter your email" required>
+    
+    <label for="registerMobile">Mobile Number</label>
+    <input type="tel" id="registerMobile" placeholder="Enter mobile number" required>
+    
+    <label for="registerPassword">Password</label>
+    <input type="password" id="registerPassword" placeholder="Create a password" required>
+    
+    <button type="submit" class="submit-btn">
+      <i class="fas fa-user-plus"></i> Register
+    </button>
+  </form>
+
+  <div id="message" class="message"></div>
+</div>
+
+<script>
+  Backendless.initApp({
+    appId: "3E6C2C39-6779-4034-B008-C3043326DE7A",
+    apiKey: "ACFC4906-9EF5-4356-9F9D-42B8D7397E0B"
+  });
+
+  const loginTab = document.getElementById('loginTab');
+  const registerTab = document.getElementById('registerTab');
+  const loginForm = document.getElementById('loginForm');
+  const registerForm = document.getElementById('registerForm');
+  const messageDiv = document.getElementById('message');
+
+  // Tab Switching
+  function switchToLogin() {
+    loginForm.classList.add('active');
+    registerForm.classList.remove('active');
+    loginTab.classList.add('active');
+    registerTab.classList.remove('active');
+    messageDiv.textContent = '';
+    messageDiv.className = 'message';
+  }
+
+  function switchToRegister() {
+    registerForm.classList.add('active');
+    loginForm.classList.remove('active');
+    registerTab.classList.add('active');
+    loginTab.classList.remove('active');
+    messageDiv.textContent = '';
+    messageDiv.className = 'message';
+  }
+
+  loginTab.addEventListener('click', switchToLogin);
+  registerTab.addEventListener('click', switchToRegister);
+
+  // Login Handler
+  loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('loginEmail').value;
+    const password = document.getElementById('loginPassword').value;
+
+    showMessage("Logging in...");
+
+    try {
+      await Backendless.UserService.login(email, password, true);
+      showMessage("Login successful! Redirecting...");
+
+      setTimeout(() => {
+        window.location.href = "main.html";
+      }, 1000);
+    } catch (error) {
+      showMessage("Login failed: " + error.message, true);
+    }
+  });
+
+  // Register Handler
+  registerForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('registerUsername').value;
+    const email = document.getElementById('registerEmail').value;
+    const mobile = document.getElementById('registerMobile').value;
+    const password = document.getElementById('registerPassword').value;
+
+    const user = new Backendless.User();
+    user.email = email;
+    user.password = password;
+    user.name = username;
+    user.mobile = mobile;
+
+    showMessage("Registering your account...");
+
+    try {
+      // Logout first to clear old token
+      await Backendless.UserService.logout();
+
+      await Backendless.UserService.register(user);
+      showMessage("Registration successful! You can now log in.");
+      registerForm.reset();
+      
+      // Switch to login tab after successful registration
+      setTimeout(switchToLogin, 1500);
+    } catch (error) {
+      showMessage("Registration failed: " + error.message, true);
+    }
+  });
+
+  function showMessage(text, isError = false) {
+    messageDiv.textContent = text;
+    messageDiv.className = "message " + (isError ? "error" : "success");
+    messageDiv.innerHTML = `<i class="fas ${isError ? 'fa-exclamation-circle' : 'fa-check-circle'}"></i> ${text}`;
+    
+    // Clear message after 5 seconds for success messages
+    if (!isError && !text.includes("Redirecting")) {
+      setTimeout(() => {
+        messageDiv.textContent = '';
+        messageDiv.className = 'message';
+      }, 5000);
+    }
+  }
+
+  // Improve mobile keyboard experience
+  document.getElementById('registerMobile').addEventListener('focus', function() {
+    if (window.innerWidth <= 600) {
+      window.scrollTo(0, this.offsetTop - 100);
+    }
+  });
+</script>
+
+</body>
+</html>

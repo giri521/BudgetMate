@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Room Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/backendless@7"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #3b82f6;
+      --primary-dark: #1e3a8a;
+      --primary-light: #60a5fa;
+      --background: #0f172a;
+      --card-bg: #1e293b;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      margin: 0;
+      background: var(--background);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+    
+    .app-container {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    
+    /* Mobile Sidebar Toggle */
+    .sidebar-toggle {
+      display: none;
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      z-index: 100;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      font-size: 1.2rem;
+      cursor: pointer;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+    
+    /* Sidebar */
+    .sidebar {
+      width: 260px;
+      background: var(--primary-dark);
+      padding: 20px 0;
+      display: flex;
+      flex-direction: column;
+      transition: all 0.3s ease;
+      box-shadow: 4px 0 15px rgba(0, 0, 0, 0.1);
+      z-index: 10;
+      position: fixed;
+      height: 100vh;
+      overflow-y: auto;
+    }
+    
+    .sidebar-header {
+      padding: 0 20px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      margin-bottom: 20px;
+    }
+    
+    .sidebar-header h3 {
+      color: white;
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .sidebar-header h3 i {
+      color: var(--primary-light);
+    }
+    
+    .sidebar a {
+      color: var(--text-primary);
+      text-decoration: none;
+      padding: 12px 25px;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-left: 3px solid transparent;
+      opacity: 0.9;
+    }
+    
+    .sidebar a:hover {
+      background: rgba(255, 255, 255, 0.1);
+      opacity: 1;
+      border-left: 3px solid var(--primary-light);
+    }
+    
+    .sidebar a i {
+      width: 20px;
+      text-align: center;
+    }
+    
+    .sidebar a.active {
+      background: rgba(255, 255, 255, 0.1);
+      border-left: 3px solid var(--primary);
+      opacity: 1;
+    }
+    
+    /* Main Content */
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      margin-left: 260px;
+    }
+    
+    /* Navbar */
+    .navbar {
+      background: var(--primary-dark);
+      color: white;
+      padding: 15px 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+    
+    .navbar-info {
+      font-size: 1.1rem;
+      font-weight: 500;
+    }
+    
+    .navbar-info i {
+      color: var(--primary-light);
+      margin-right: 8px;
+    }
+    
+    .navbar button {
+      background: var(--danger);
+      border: none;
+      padding: 8px 16px;
+      color: white;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .navbar button:hover {
+      background: #dc2626;
+      transform: translateY(-2px);
+    }
+    
+    /* Container */
+    .container {
+      padding: 30px;
+      max-width: 1200px;
+      margin: 0 auto;
+      flex-grow: 1;
+      width: 100%;
+    }
+    
+    /* Typography */
+    h2 {
+      color: var(--primary);
+      font-size: 1.8rem;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    h2 i {
+      color: var(--primary-light);
+    }
+    
+    h3 {
+      color: var(--primary-light);
+      font-size: 1.3rem;
+      margin: 30px 0 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    h3 i {
+      color: var(--primary);
+    }
+    
+    /* Tables */
+    .table-container {
+      background: var(--card-bg);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      margin-bottom: 30px;
+      overflow-x: auto;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      color: var(--text-primary);
+      min-width: 600px;
+    }
+    
+    th {
+      background: var(--primary);
+      color: white;
+      text-align: left;
+      font-weight: 600;
+      padding: 15px 20px;
+    }
+    
+    td {
+      padding: 12px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    tr:last-child td {
+      border-bottom: none;
+    }
+    
+    tr:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+    
+    /* Buttons */
+    .action-btn {
+      padding: 6px 12px;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.9rem;
+      margin: 2px;
+      white-space: nowrap;
+    }
+    
+    .action-btn i {
+      font-size: 0.8rem;
+    }
+    
+    .approve {
+      background-color: rgba(16, 185, 129, 0.2);
+      color: var(--success);
+    }
+    
+    .approve:hover {
+      background-color: rgba(16, 185, 129, 0.3);
+    }
+    
+    .reject {
+      background-color: rgba(239, 68, 68, 0.2);
+      color: var(--danger);
+    }
+    
+    .reject:hover {
+      background-color: rgba(239, 68, 68, 0.3);
+    }
+    
+    .leave {
+      background-color: rgba(245, 158, 11, 0.2);
+      color: var(--warning);
+    }
+    
+    .leave:hover {
+      background-color: rgba(245, 158, 11, 0.3);
+    }
+    
+    .delete-room {
+      background-color: rgba(185, 28, 28, 0.2);
+      color: #dc2626;
+      margin-top: 20px;
+      padding: 10px 20px;
+      width: 180px;
+    }
+    
+    .delete-room:hover {
+      background-color: rgba(185, 28, 28, 0.3);
+    }
+    
+    /* Messages */
+    .message {
+      margin: 15px 0;
+      padding: 12px 15px;
+      border-radius: 8px;
+      font-weight: 500;
+    }
+    
+    .error {
+      background-color: rgba(239, 68, 68, 0.2);
+      color: var(--danger);
+      border-left: 4px solid var(--danger);
+    }
+    
+    .success {
+      background-color: rgba(16, 185, 129, 0.2);
+      color: var(--success);
+      border-left: 4px solid var(--success);
+    }
+    
+    .empty-message {
+      color: var(--text-secondary);
+      text-align: center;
+      padding: 20px;
+      font-style: italic;
+    }
+    
+    /* Animations */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .animate {
+      animation: fadeIn 0.6s ease forwards;
+    }
+    
+    .delay-1 { animation-delay: 0.1s; }
+    .delay-2 { animation-delay: 0.2s; }
+    .delay-3 { animation-delay: 0.3s; }
+    .delay-4 { animation-delay: 0.4s; }
+    
+    /* Mobile Responsiveness */
+    @media (max-width: 992px) {
+      .sidebar {
+        transform: translateX(-100%);
+        position: fixed;
+      }
+      
+      .sidebar.active {
+        transform: translateX(0);
+      }
+      
+      .main-content {
+        margin-left: 0;
+      }
+      
+      .sidebar-toggle {
+        display: block;
+      }
+      
+      .container {
+        padding: 20px 15px;
+      }
+      
+      .navbar {
+        padding: 15px;
+      }
+      
+      h2 {
+        font-size: 1.5rem;
+      }
+      
+      h3 {
+        font-size: 1.2rem;
+      }
+    }
+    
+    @media (max-width: 768px) {
+      .navbar-info {
+        font-size: 1rem;
+      }
+      
+      .navbar button span {
+        display: none;
+      }
+      
+      .navbar button {
+        padding: 8px 12px;
+      }
+      
+      .action-btn span {
+        display: none;
+      }
+      
+      .action-btn {
+        padding: 6px 8px;
+      }
+      
+      th, td {
+        padding: 10px 12px;
+      }
+    }
+    
+    @media (max-width: 480px) {
+      .container {
+        padding: 15px 10px;
+      }
+      
+      h2 {
+        font-size: 1.3rem;
+      }
+      
+      h3 {
+        margin: 20px 0 10px;
+      }
+      
+      .delete-room {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Mobile Sidebar Toggle -->
+    <button class="sidebar-toggle" id="sidebarToggle">
+      <i class="fas fa-bars"></i>
+    </button>
+    
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebarMenu">
+      <div class="sidebar-header">
+        <h3><i class="fas fa-home"></i> <span>BudgetMate</span></h3>
+      </div>
+      <!-- Links will be injected dynamically -->
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <div class="navbar">
+        <div class="navbar-info" id="roomInfo">
+          <i class="fas fa-door-open"></i> Loading Room...
+        </div>
+        <button id="logoutBtn"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></button>
+      </div>
+
+      <div class="container">
+        <h2 class="animate"><i class="fas fa-tachometer-alt"></i> Room Dashboard</h2>
+        <div id="message" class="message"></div>
+
+        <section id="pendingSection" class="animate delay-1" style="display:none;">
+          <h3><i class="fas fa-user-clock"></i> Pending Join Requests</h3>
+          <div class="table-container">
+            <table id="pendingTable">
+              <thead>
+                <tr>
+                  <th>User Name</th>
+                  <th>Email</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="membersSection" class="animate delay-2" style="display:none;">
+          <h3><i class="fas fa-users"></i> Approved Members</h3>
+          <div class="table-container">
+            <table id="membersTable">
+              <thead>
+                <tr>
+                  <th>User Name</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
+        <button id="leaveRoomBtn" class="action-btn leave animate delay-3" style="display:none;">
+          <i class="fas fa-door-open"></i> <span>Leave Room</span>
+        </button>
+        <button id="deleteRoomBtn" class="action-btn delete-room animate delay-4" style="display:none;">
+          <i class="fas fa-trash-alt"></i> <span>Delete Room</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript Logic -->
+  <script>
+    Backendless.initApp({
+      appId: "3E6C2C39-6779-4034-B008-C3043326DE7A",
+      apiKey: "ACFC4906-9EF5-4356-9F9D-42B8D7397E0B"
+    });
+
+    let currentUser = null;
+    let currentRoom = null;
+    let currentUserMemberData = null;
+    let roomId = null;
+
+    const messageDiv = document.getElementById("message");
+    const roomInfoDiv = document.getElementById("roomInfo");
+    const pendingSection = document.getElementById("pendingSection");
+    const pendingTableBody = document.querySelector("#pendingTable tbody");
+    const membersSection = document.getElementById("membersSection");
+    const membersTableBody = document.querySelector("#membersTable tbody");
+    const leaveRoomBtn = document.getElementById("leaveRoomBtn");
+    const deleteRoomBtn = document.getElementById("deleteRoomBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const sidebarToggle = document.getElementById("sidebarToggle");
+    const sidebar = document.getElementById("sidebarMenu");
+
+    function getRoomIdFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("roomId");
+    }
+
+    function showMessage(text, isError = false) {
+      messageDiv.textContent = text;
+      messageDiv.className = "message " + (isError ? "error" : "success");
+    }
+
+    function clearMessage() {
+      messageDiv.textContent = "";
+      messageDiv.className = "message";
+    }
+
+    logoutBtn.addEventListener("click", async () => {
+      try {
+        await Backendless.UserService.logout();
+        window.location.href = "index.html";
+      } catch(err) {
+        showMessage("Logout failed: " + err.message, true);
+      }
+    });
+
+    // Toggle sidebar on mobile
+    sidebarToggle.addEventListener('click', () => {
+      sidebar.classList.toggle('active');
+    });
+
+    // Close sidebar when clicking outside on mobile
+    document.addEventListener('click', (e) => {
+      if (window.innerWidth <= 992 && 
+          !sidebar.contains(e.target) && 
+          e.target !== sidebarToggle) {
+        sidebar.classList.remove('active');
+      }
+    });
+
+    async function fetchRoom(roomId) {
+      const query = Backendless.DataQueryBuilder.create().setWhereClause(`objectId = '${roomId}'`);
+      const rooms = await Backendless.Data.of("Rooms").find(query);
+      return rooms.length ? rooms[0] : null;
+    }
+
+    async function fetchMembers(roomCode, status = null) {
+      let where = `roomCode = '${roomCode}'`;
+      if (status) where += ` AND status = '${status}'`;
+      const query = Backendless.DataQueryBuilder.create().setWhereClause(where);
+      return Backendless.Data.of("Members").find(query);
+    }
+
+    async function fetchCurrentUserMember(roomCode, userId) {
+      const where = `roomCode = '${roomCode}' AND userId = '${userId}'`;
+      const query = Backendless.DataQueryBuilder.create().setWhereClause(where);
+      const members = await Backendless.Data.of("Members").find(query);
+      return members.length ? members[0] : null;
+    }
+
+    async function approveMember(memberId) {
+      clearMessage();
+      try {
+        const member = await Backendless.Data.of("Members").findById(memberId);
+        member.status = "approved";
+        await Backendless.Data.of("Members").save(member);
+        showMessage("Member approved successfully.");
+        loadRoomData();
+      } catch(err) {
+        showMessage("Error approving member: " + err.message, true);
+      }
+    }
+
+    async function rejectMember(memberId) {
+      clearMessage();
+      if (!confirm("Are you sure to reject this join request?")) return;
+      try {
+        await Backendless.Data.of("Members").remove(memberId);
+        showMessage("Join request rejected.");
+        loadRoomData();
+      } catch(err) {
+        showMessage("Error rejecting member: " + err.message, true);
+      }
+    }
+
+    async function removeMember(memberId) {
+      clearMessage();
+      if (!confirm("Are you sure you want to remove this member from the room?")) return;
+      try {
+        const member = await Backendless.Data.of("Members").findById(memberId);
+        if (member.userId === currentRoom.createdBy) {
+          showMessage("You cannot remove the room creator.", true);
+          return;
+        }
+        await Backendless.Data.of("Members").remove(memberId);
+        showMessage("Member removed successfully.");
+        loadRoomData();
+      } catch(err) {
+        showMessage("Error removing member: " + err.message, true);
+      }
+    }
+
+    async function makeAdmin(memberId) {
+      clearMessage();
+      if (!confirm("Make this member an Admin?")) return;
+      try {
+        const member = await Backendless.Data.of("Members").findById(memberId);
+        if (member.userId === currentRoom.createdBy) {
+          showMessage("Creator is already the main admin.", true);
+          return;
+        }
+        member.role = "admin";
+        await Backendless.Data.of("Members").save(member);
+        showMessage("Member promoted to Admin.");
+        loadRoomData();
+      } catch (err) {
+        showMessage("Error promoting to admin: " + err.message, true);
+      }
+    }
+
+    async function removeAdmin(memberId) {
+      clearMessage();
+      if (!confirm("Remove this admin role?")) return;
+      try {
+        const member = await Backendless.Data.of("Members").findById(memberId);
+        if (member.userId === currentRoom.createdBy) {
+          showMessage("You cannot change the role of the room creator.", true);
+          return;
+        }
+        member.role = "member";
+        await Backendless.Data.of("Members").save(member);
+        showMessage("Admin demoted to Member.");
+        loadRoomData();
+      } catch (err) {
+        showMessage("Error demoting admin: " + err.message, true);
+      }
+    }
+
+    async function leaveRoom() {
+      clearMessage();
+      if (!confirm("Are you sure you want to leave this room?")) return;
+      try {
+        await Backendless.Data.of("Members").remove(currentUserMemberData.objectId);
+        showMessage("You have left the room.");
+        setTimeout(() => window.location.href = "main.html", 1500);
+      } catch(err) {
+        showMessage("Error leaving room: " + err.message, true);
+      }
+    }
+
+    async function deleteRoom() {
+      clearMessage();
+      if (!confirm("Are you sure you want to DELETE this room? This action cannot be undone.")) return;
+      try {
+        const allMembers = await fetchMembers(currentRoom.roomCode);
+        const removePromises = allMembers.map(m => Backendless.Data.of("Members").remove(m.objectId));
+        await Promise.all(removePromises);
+        await Backendless.Data.of("Rooms").remove(currentRoom.objectId);
+        showMessage("Room deleted successfully. Redirecting...");
+        setTimeout(() => window.location.href = "main.html", 1500);
+      } catch(err) {
+        showMessage("Error deleting room: " + err.message, true);
+      }
+    }
+
+    function renderPendingMembers(members) {
+      pendingTableBody.innerHTML = "";
+      if (members.length === 0) {
+        pendingTableBody.innerHTML = `<tr><td colspan="3" class="empty-message">No pending join requests.</td></tr>`;
+        return;
+      }
+      members.forEach(m => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${m.userName}</td>
+          <td>${m.userEmail}</td>
+          <td>
+            <button class="action-btn approve" onclick="approveMember('${m.objectId}')">
+              <i class="fas fa-check"></i> <span>Approve</span>
+            </button>
+            <button class="action-btn reject" onclick="rejectMember('${m.objectId}')">
+              <i class="fas fa-times"></i> <span>Reject</span>
+            </button>
+          </td>`;
+        pendingTableBody.appendChild(tr);
+      });
+    }
+
+    function renderApprovedMembers(members) {
+      membersTableBody.innerHTML = "";
+      if (members.length === 0) {
+        membersTableBody.innerHTML = `<tr><td colspan="4" class="empty-message">No approved members found.</td></tr>`;
+        return;
+      }
+      members.forEach(m => {
+        const canModify = currentUserMemberData.role === "admin" && m.userId !== currentUser.objectId;
+        const actionButtons = [];
+
+        if (m.userId === currentUser.objectId) {
+          actionButtons.push(`
+            <button class="action-btn leave" onclick="leaveRoom()">
+              <i class="fas fa-door-open"></i> <span>Leave</span>
+            </button>
+          `);
+        } else if (canModify) {
+          if (m.userId !== currentRoom.createdBy) {
+            actionButtons.push(`
+              <button class="action-btn reject" onclick="removeMember('${m.objectId}')">
+                <i class="fas fa-user-minus"></i> <span>Remove</span>
+              </button>
+            `);
+            if (m.role !== "admin") {
+              actionButtons.push(`
+                <button class="action-btn approve" onclick="makeAdmin('${m.objectId}')">
+                  <i class="fas fa-user-shield"></i> <span>Make Admin</span>
+                </button>
+              `);
+            } else {
+              actionButtons.push(`
+                <button class="action-btn reject" onclick="removeAdmin('${m.objectId}')">
+                  <i class="fas fa-user-slash"></i> <span>Remove as Admin</span>
+                </button>
+              `);
+            }
+          }
+        }
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${m.userName}</td>
+          <td>${m.userEmail}</td>
+          <td>${m.role}${m.userId === currentRoom.createdBy ? ' (Creator)' : ''}</td>
+          <td>${actionButtons.join(" ")}</td>`;
+        membersTableBody.appendChild(tr);
+      });
+    }
+
+    async function loadRoomData() {
+      clearMessage();
+      try {
+        currentUser = await Backendless.UserService.getCurrentUser();
+        if (!currentUser) return (window.location.href = "index.html");
+
+        roomId = getRoomIdFromUrl();
+        if (!roomId) return (window.location.href = "main.html");
+
+        currentRoom = await fetchRoom(roomId);
+        if (!currentRoom) return (window.location.href = "main.html");
+
+        currentUserMemberData = await fetchCurrentUserMember(currentRoom.roomCode, currentUser.objectId);
+        if (!currentUserMemberData) return (window.location.href = "main.html");
+
+        const isAdmin = currentUserMemberData.role === "admin";
+
+        document.querySelector('.sidebar').innerHTML = `
+          <div class="sidebar-header">
+            <h3><i class="fas fa-home"></i> <span>BudgetMate</span></h3>
+          </div>
+          ${isAdmin ? `
+            <a href="#pendingSection"><i class="fas fa-user-clock"></i> <span>Approve Requests</span></a>
+            <a href="#membersSection"><i class="fas fa-users"></i> <span>Manage Members</span></a>
+            <a href="add_money.html?roomId=${roomId}"><i class="fas fa-plus-circle"></i> <span>Add Money</span></a>
+            <a href="spent_money.html?roomId=${roomId}"><i class="fas fa-minus-circle"></i> <span>Spent Money</span></a>
+          ` : ''}
+          <a href="overview.html?roomId=${roomId}"><i class="fas fa-chart-pie"></i> <span>Overview</span></a>
+          <a href="transactions.html?roomId=${roomId}"><i class="fas fa-exchange-alt"></i> <span>Transactions</span></a>
+          <a href="download_pdf.html?roomId=${roomId}"><i class="fas fa-file-pdf"></i> <span>Download PDF</span></a>
+        `;
+
+        roomInfoDiv.innerHTML = `<i class="fas fa-door-open"></i> Room: ${currentRoom.roomName} | Code: ${currentRoom.roomCode}`;
+
+        const pendingMembers = await fetchMembers(currentRoom.roomCode, "pending");
+        const approvedMembers = await fetchMembers(currentRoom.roomCode, "approved");
+
+        if (isAdmin) {
+          pendingSection.style.display = "block";
+          deleteRoomBtn.style.display = "inline-block";
+        } else {
+          pendingSection.style.display = "none";
+          deleteRoomBtn.style.display = "none";
+        }
+
+        membersSection.style.display = "block";
+        renderPendingMembers(pendingMembers);
+        renderApprovedMembers(approvedMembers);
+
+        if (currentUserMemberData.status === "approved") {
+          leaveRoomBtn.style.display = "inline-block";
+        } else {
+          leaveRoomBtn.style.display = "none";
+        }
+
+      } catch (err) {
+        showMessage("Error loading room data: " + err.message, true);
+      }
+    }
+
+    // Make functions available globally for onclick handlers
+    window.approveMember = approveMember;
+    window.rejectMember = rejectMember;
+    window.leaveRoom = leaveRoom;
+    window.deleteRoom = deleteRoom;
+    window.removeMember = removeMember;
+    window.makeAdmin = makeAdmin;
+    window.removeAdmin = removeAdmin;
+
+    window.onload = loadRoomData;
+  </script>
+</body>
+</html>

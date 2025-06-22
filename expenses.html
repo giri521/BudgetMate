@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Room Expenses</title>
+  <script src="https://cdn.jsdelivr.net/npm/backendless@7"></script>
+  <style>
+    body {
+      background: #0f172a;
+      color: white;
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    .container {
+      max-width: 700px;
+      margin: auto;
+      background: #1e293b;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px #0ea5e9;
+    }
+    h2 {
+      color: #38bdf8;
+      text-align: center;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+    }
+    select, input, textarea {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+      border-radius: 6px;
+      font-size: 16px;
+      border: none;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px;
+      background: #0ea5e9;
+      color: white;
+      border: none;
+      font-size: 16px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #0284c7;
+    }
+    #otherReasonGroup { display: none; }
+    .message {
+      text-align: center;
+      margin-top: 15px;
+      font-weight: bold;
+    }
+    .success { color: #10b981; }
+    .error { color: #ef4444; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Room Expense Entry</h2>
+    <div id="message" class="message"></div>
+
+    <label for="transactionType">Transaction Type</label>
+    <select id="transactionType">
+      <option value="add">Add Money</option>
+      <option value="spend">Spend Money</option>
+    </select>
+
+    <label for="memberSelect">Select Member</label>
+    <select id="memberSelect"></select>
+
+    <label for="amount">Amount (INR)</label>
+    <input type="number" id="amount" placeholder="Enter amount" />
+
+    <div id="paymentSection">
+      <label for="paymentType">Payment Type</label>
+      <select id="paymentType">
+        <option value="Cash">Cash</option>
+        <option value="Paytm">Paytm</option>
+      </select>
+    </div>
+
+    <div id="spendSection" style="display: none;">
+      <label for="category">Spent For</label>
+      <select id="category">
+        <option value="Groceries">Groceries</option>
+        <option value="Vegetables">Vegetables</option>
+        <option value="Electricity">Electricity</option>
+        <option value="Water">Water</option>
+        <option value="Rent">Rent</option>
+        <option value="Others">Others</option>
+      </select>
+
+      <div id="otherReasonGroup">
+        <label for="otherReason">Specify Reason</label>
+        <input type="text" id="otherReason" placeholder="Enter custom reason" />
+      </div>
+    </div>
+
+    <label for="description">Description</label>
+    <textarea id="description" placeholder="Optional description..."></textarea>
+
+    <button onclick="submitTransaction()">Submit</button>
+  </div>
+
+  <script>
+    Backendless.initApp({
+      appId: "3E6C2C39-6779-4034-B008-C3043326DE7A",
+      apiKey: "ACFC4906-9EF5-4356-9F9D-42B8D7397E0B"
+    });
+
+    let membersList = [];
+    const memberSelect = document.getElementById("memberSelect");
+    const categorySelect = document.getElementById("category");
+    const otherReasonGroup = document.getElementById("otherReasonGroup");
+    const transactionTypeSelect = document.getElementById("transactionType");
+    const spendSection = document.getElementById("spendSection");
+    const paymentSection = document.getElementById("paymentSection");
+    const messageDiv = document.getElementById("message");
+
+    function showMessage(msg, isError = false) {
+      messageDiv.textContent = msg;
+      messageDiv.className = "message " + (isError ? "error" : "success");
+    }
+
+    categorySelect.addEventListener("change", () => {
+      otherReasonGroup.style.display = categorySelect.value === "Others" ? "block" : "none";
+    });
+
+    transactionTypeSelect.addEventListener("change", () => {
+      const isSpend = transactionTypeSelect.value === "spend";
+      spendSection.style.display = isSpend ? "block" : "none";
+      paymentSection.style.display = !isSpend ? "block" : "none";
+    });
+
+    async function loadMembers() {
+      const params = new URLSearchParams(window.location.search);
+      const roomId = params.get("roomId");
+      const room = await Backendless.Data.of("Rooms").findById(roomId);
+      const members = await Backendless.Data.of("Members").find(
+        Backendless.DataQueryBuilder.create().setWhereClause(`roomCode='${room.roomCode}' AND status='approved'`)
+      );
+
+      membersList = members;
+      members.forEach(m => {
+        const opt = document.createElement("option");
+        opt.value = m.userId;
+        opt.textContent = `${m.userName} (${m.userEmail})`;
+        memberSelect.appendChild(opt);
+      });
+    }
+
+    async function submitTransaction() {
+      showMessage("");
+
+      const type = transactionTypeSelect.value;
+      const userId = memberSelect.value;
+      const member = membersList.find(m => m.userId === userId);
+      const amount = parseFloat(document.getElementById("amount").value);
+      const paymentType = document.getElementById("paymentType").value;
+      const category = document.getElementById("category").value;
+      const otherReason = document.getElementById("otherReason").value;
+      const description = document.getElementById("description").value;
+
+      if (!member || isNaN(amount) || amount <= 0) {
+        return showMessage("Please complete all required fields.", true);
+      }
+
+      const finalCategory = (type === "spend" && category === "Others") ? `Others: ${otherReason}` : (type === "spend" ? category : "");
+
+      const transaction = {
+        userId: member.userId,
+        userName: member.userName,
+        userEmail: member.userEmail,
+        roomCode: member.roomCode,
+        amount,
+        transactionType: type,
+        paymentType: type === "add" ? paymentType : "",
+        category: finalCategory,
+        description
+      };
+
+      try {
+        await Backendless.Data.of("Transactions").save(transaction);
+        showMessage("Transaction saved successfully.");
+      } catch (err) {
+        showMessage("Error saving transaction: " + err.message, true);
+      }
+    }
+
+    window.onload = loadMembers;
+  </script>
+</body>
+</html>

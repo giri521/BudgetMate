@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spent Money</title>
+  <script src="https://cdn.jsdelivr.net/npm/backendless@7"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #3b82f6;
+      --primary-dark: #1e3a8a;
+      --primary-light: #60a5fa;
+      --background: #0f172a;
+      --card-bg: #1e293b;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--background);
+      color: var(--text-primary);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+    
+    /* Mobile-first layout */
+    .container {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    
+    .sidebar {
+      background: var(--primary-dark);
+      padding: 10px 0;
+      box-shadow: 4px 0 15px rgba(0, 0, 0, 0.1);
+      z-index: 10;
+      order: 2;
+    }
+    
+    .sidebar-header {
+      padding: 10px 15px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      margin-bottom: 10px;
+      display: none; /* Hidden by default on mobile */
+    }
+    
+    .sidebar-header h3 {
+      color: white;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .sidebar-header h3 i {
+      color: var(--primary-light);
+    }
+    
+    .sidebar-nav {
+      display: flex;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 0 5px;
+    }
+    
+    .sidebar-nav::-webkit-scrollbar {
+      display: none;
+    }
+    
+    .sidebar a {
+      color: var(--text-primary);
+      text-decoration: none;
+      padding: 12px 15px;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      min-width: 70px;
+      font-size: 0.8rem;
+      border-bottom: 3px solid transparent;
+      opacity: 0.9;
+      white-space: nowrap;
+    }
+    
+    .sidebar a:hover {
+      background: rgba(255, 255, 255, 0.1);
+      opacity: 1;
+      border-bottom: 3px solid var(--primary-light);
+    }
+    
+    .sidebar a i {
+      font-size: 1.2rem;
+    }
+    
+    .sidebar a.active {
+      background: rgba(255, 255, 255, 0.1);
+      border-bottom: 3px solid var(--primary);
+      opacity: 1;
+    }
+    
+    .sidebar a span {
+      font-size: 0.7rem;
+    }
+    
+    .main {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      order: 1;
+    }
+    
+    h2 {
+      color: var(--primary);
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    h2 i {
+      color: var(--primary-light);
+      font-size: 1.3rem;
+    }
+    
+    .form-container {
+      background: var(--card-bg);
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      margin: 0 auto;
+      transition: transform 0.3s ease;
+      max-width: 600px;
+    }
+    
+    .form-container:hover {
+      transform: translateY(-3px);
+    }
+    
+    label {
+      display: block;
+      margin: 15px 0 6px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+    
+    select, input[type="number"], textarea {
+      width: 100%;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      font-size: 0.95rem;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-primary);
+      transition: all 0.3s ease;
+    }
+    
+    select:focus, input[type="number"]:focus, textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+    }
+    
+    textarea {
+      min-height: 80px;
+      resize: vertical;
+    }
+    
+    button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 20px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      border-radius: 6px;
+      border: none;
+      background-color: var(--danger);
+      color: white;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    
+    button:hover {
+      background-color: #dc2626;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(239, 68, 68, 0.2);
+    }
+    
+    button i {
+      font-size: 1rem;
+    }
+    
+    .message {
+      margin-top: 15px;
+      padding: 10px 12px;
+      border-radius: 6px;
+      font-weight: 500;
+      font-size: 0.9rem;
+    }
+    
+    .success {
+      background-color: rgba(16, 185, 129, 0.2);
+      color: var(--success);
+      border-left: 4px solid var(--success);
+    }
+    
+    .error {
+      background-color: rgba(239, 68, 68, 0.2);
+      color: var(--danger);
+      border-left: 4px solid var(--danger);
+    }
+    
+    /* Animations */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .animate {
+      animation: fadeIn 0.4s ease forwards;
+    }
+    
+    /* Desktop layout */
+    @media (min-width: 768px) {
+      .container {
+        flex-direction: row;
+      }
+      
+      .sidebar {
+        width: 260px;
+        padding: 20px 0;
+        order: 1;
+      }
+      
+      .sidebar-header {
+        display: block;
+        padding: 0 20px 20px;
+        margin-bottom: 20px;
+      }
+      
+      .sidebar-nav {
+        display: block;
+        overflow-x: visible;
+        padding: 0;
+      }
+      
+      .sidebar a {
+        flex-direction: row;
+        padding: 12px 25px;
+        min-width: auto;
+        font-size: 1rem;
+        border-left: 3px solid transparent;
+        border-bottom: none;
+        gap: 12px;
+      }
+      
+      .sidebar a:hover {
+        border-left: 3px solid var(--primary-light);
+        border-bottom: none;
+      }
+      
+      .sidebar a.active {
+        border-left: 3px solid var(--primary);
+        border-bottom: none;
+      }
+      
+      .sidebar a span {
+        font-size: inherit;
+      }
+      
+      .main {
+        padding: 30px;
+        order: 2;
+      }
+      
+      h2 {
+        font-size: 1.8rem;
+        margin-bottom: 20px;
+      }
+      
+      h2 i {
+        font-size: 1.5rem;
+      }
+      
+      .form-container {
+        padding: 30px;
+        border-radius: 12px;
+      }
+      
+      label {
+        margin: 20px 0 8px;
+        font-size: 1rem;
+      }
+      
+      select, input[type="number"], textarea {
+        padding: 12px 15px;
+        margin-bottom: 10px;
+        font-size: 1rem;
+        border-radius: 8px;
+      }
+      
+      textarea {
+        min-height: 100px;
+      }
+      
+      button {
+        padding: 14px;
+        margin-top: 25px;
+        font-size: 1rem;
+        border-radius: 8px;
+      }
+      
+      .message {
+        margin-top: 20px;
+        padding: 12px 15px;
+        border-radius: 8px;
+        font-size: 1rem;
+      }
+    }
+    
+    /* Large screens */
+    @media (min-width: 1200px) {
+      .main {
+        padding: 40px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <h3><i class="fas fa-home"></i> <span>BudgetMate</span></h3>
+      </div>
+      <div class="sidebar-nav">
+        <a href="room_dashboard.html"><i class="fas fa-tachometer-alt"></i> <span>Dashboard</span></a>
+        <a href="add_money.html"><i class="fas fa-plus-circle"></i> <span>Add Money</span></a>
+        <a href="spent_money.html" class="active"><i class="fas fa-minus-circle"></i> <span>Spent Money</span></a>
+        <a href="transactions.html"><i class="fas fa-exchange-alt"></i> <span>Transactions</span></a>
+        <a href="overview.html"><i class="fas fa-chart-pie"></i> <span>Overview</span></a>
+        <a href="download_pdf.html"><i class="fas fa-file-pdf"></i> <span>Download PDF</span></a>
+      </div>
+    </div>
+
+    <div class="main">
+      <h2 class="animate"><i class="fas fa-money-bill-wave"></i> Spent Money</h2>
+      
+      <div class="form-container animate delay-1">
+        <label for="memberSelect">Spent By</label>
+        <select id="memberSelect">
+          <option value="">Loading members...</option>
+        </select>
+
+        <label for="amount">Amount Spent (₹)</label>
+        <input type="number" id="amount" placeholder="Enter amount" min="1" required />
+
+        <label for="category">Spent For</label>
+        <select id="category">
+          <option value="Groceries">Groceries</option>
+          <option value="Vegetables">Vegetables</option>
+          <option value="Electricity">Electricity</option>
+          <option value="Rent">Rent</option>
+          <option value="Water">Water</option>
+          <option value="Others">Others</option>
+        </select>
+
+        <label for="description">Description / Reason</label>
+        <textarea id="description" placeholder="Write details if Others or anything specific..."></textarea>
+
+        <button onclick="submitSpent()">
+          <i class="fas fa-paper-plane"></i> Submit Expense
+        </button>
+
+        <div class="message" id="message"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    Backendless.initApp({
+      appId: "3E6C2C39-6779-4034-B008-C3043326DE7A",
+      apiKey: "ACFC4906-9EF5-4356-9F9D-42B8D7397E0B"
+    });
+
+    let currentUser, currentRoomId, currentRoom;
+    const messageDiv = document.getElementById("message");
+    const memberSelect = document.getElementById("memberSelect");
+
+    function showMessage(text, isError = false) {
+      messageDiv.textContent = text;
+      messageDiv.className = "message " + (isError ? "error" : "success");
+    }
+
+    function getRoomIdFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("roomId");
+    }
+
+    async function loadMembers() {
+      try {
+        currentUser = await Backendless.UserService.getCurrentUser();
+        if (!currentUser) return location.href = "index.html";
+
+        currentRoomId = getRoomIdFromUrl();
+        if (!currentRoomId) return location.href = "room_dashboard.html";
+
+        // Update sidebar links with roomId
+        document.querySelector('.sidebar-nav').innerHTML = `
+          <a href="room_dashboard.html?roomId=${currentRoomId}"><i class="fas fa-tachometer-alt"></i> <span>Dashboard</span></a>
+          <a href="add_money.html?roomId=${currentRoomId}"><i class="fas fa-plus-circle"></i> <span>Add Money</span></a>
+          <a href="spent_money.html?roomId=${currentRoomId}" class="active"><i class="fas fa-minus-circle"></i> <span>Spent Money</span></a>
+          <a href="transactions.html?roomId=${currentRoomId}"><i class="fas fa-exchange-alt"></i> <span>Transactions</span></a>
+          <a href="overview.html?roomId=${currentRoomId}"><i class="fas fa-chart-pie"></i> <span>Overview</span></a>
+          <a href="download_pdf.html?roomId=${currentRoomId}"><i class="fas fa-file-pdf"></i> <span>Download PDF</span></a>
+        `;
+
+        currentRoom = await Backendless.Data.of("Rooms").findById(currentRoomId);
+        if (!currentRoom) return location.href = "main.html";
+
+        const query = Backendless.DataQueryBuilder.create().setWhereClause(`roomCode = '${currentRoom.roomCode}' AND status = 'approved'`);
+        const members = await Backendless.Data.of("Members").find(query);
+
+        if (!members.length) {
+          memberSelect.innerHTML = `<option value="">No approved members found</option>`;
+          return;
+        }
+
+        memberSelect.innerHTML = members.map(m =>
+          `<option value="${m.userId}|${m.userName}">${m.userName}</option>`
+        ).join("");
+
+      } catch (err) {
+        showMessage("Failed to load members: " + err.message, true);
+      }
+    }
+
+    async function submitSpent() {
+      const amount = parseFloat(document.getElementById("amount").value);
+      const category = document.getElementById("category").value;
+      const description = document.getElementById("description").value.trim();
+      const selected = memberSelect.value;
+
+      if (!selected || !amount || amount <= 0 || !category) {
+        showMessage("Please fill all fields correctly.", true);
+        return;
+      }
+
+      const [userId, userName] = selected.split("|");
+
+      try {
+        const roomCode = currentRoom.roomCode;
+
+        const query = Backendless.DataQueryBuilder.create().setWhereClause(`roomCode = '${roomCode}' AND status = 'approved'`);
+        const members = await Backendless.Data.of("Members").find(query);
+
+        if (!members.length) {
+          showMessage("No members to split the amount.", true);
+          return;
+        }
+
+        const splitAmount = amount / members.length;
+
+        const transaction = {
+          roomCode,
+          userId,
+          userName,
+          amount,
+          splitAmount,
+          category,
+          description,
+          type: "spent",
+          timestamp: new Date().toISOString()
+        };
+
+        await Backendless.Data.of("Transactions").save(transaction);
+        showMessage("Expense recorded and split among all members.");
+
+        // Reset form
+        document.getElementById("amount").value = "";
+        document.getElementById("description").value = "";
+        document.getElementById("category").value = "Groceries";
+
+      } catch (err) {
+        showMessage("Error saving transaction: " + err.message, true);
+      }
+    }
+
+    window.onload = loadMembers;
+  </script>
+</body>
+</html>

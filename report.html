@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Room Report</title>
+  <script src="https://cdn.jsdelivr.net/npm/backendless@7"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body {
+      margin: 0;
+      background: #0f172a;
+      color: white;
+      font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      min-height: 100vh;
+    }
+    .sidebar {
+      width: 250px;
+      background: #1e293b;
+      padding: 20px 0;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 4px 0 10px rgba(0,0,0,0.2);
+    }
+    .sidebar a {
+      color: white;
+      padding: 12px 24px;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: 0.2s;
+    }
+    .sidebar a:hover {
+      background: #334155;
+    }
+    .main {
+      flex: 1;
+      padding: 30px;
+      overflow-y: auto;
+    }
+    h2 {
+      margin-bottom: 20px;
+    }
+    canvas {
+      background: white;
+      border-radius: 10px;
+      padding: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="sidebar" id="sidebar"></div>
+  <div class="main">
+    <h2><i class="fas fa-chart-bar"></i> Room Report</h2>
+    <canvas id="lineChart" width="400" height="200"></canvas>
+  </div>
+  
+  <script>
+    Backendless.initApp({
+      appId: "3E6C2C39-6779-4034-B008-C3043326DE7A",
+      apiKey: "ACFC4906-9EF5-4356-9F9D-42B8D7397E0B"
+    });
+
+    async function loadReport() {
+      const params = new URLSearchParams(location.search);
+      const roomId = params.get("roomId");
+      if (!roomId) return location.href = "main.html";
+
+      const room = await Backendless.Data.of("Rooms").findById(roomId);
+      if (!room) return location.href = "main.html";
+
+      const roomCode = room.roomCode;
+      const user = await Backendless.UserService.getCurrentUser();
+
+      const memberQuery = Backendless.DataQueryBuilder.create().setWhereClause(`roomCode = '${roomCode}' AND userId = '${user.objectId}'`);
+      const member = (await Backendless.Data.of("Members").find(memberQuery))[0];
+
+      // Sidebar
+      document.getElementById("sidebar").innerHTML = `
+        <a href="room_dashboard.html?roomId=${roomId}"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+        ${member.role === 'admin' ? `<a href="add_money.html?roomId=${roomId}"><i class="fas fa-plus-circle"></i> Add Money</a>
+        <a href="spent_money.html?roomId=${roomId}"><i class="fas fa-minus-circle"></i> Spent Money</a>` : ''}
+        <a href="transactions.html?roomId=${roomId}"><i class="fas fa-exchange-alt"></i> Transactions</a>
+        <a href="overview.html?roomId=${roomId}"><i class="fas fa-chart-pie"></i> Overview</a>
+        <a href="download_pdf.html?roomId=${roomId}"><i class="fas fa-file-pdf"></i> Download PDF</a>
+        <a href="report.html?roomId=${roomId}" class="active"><i class="fas fa-chart-bar"></i> Report</a>
+      `;
+
+      const query = Backendless.DataQueryBuilder.create()
+        .setWhereClause(`roomCode = '${roomCode}'`)
+        .setSortBy("timestamp asc");
+
+      const transactions = await Backendless.Data.of("Transactions").find(query);
+      const trend = {};
+
+      transactions.forEach(t => {
+        const month = new Date(t.timestamp).toLocaleString('default', { month: 'short', year: 'numeric' });
+        if (!trend[month]) trend[month] = { added: 0, spent: 0 };
+        if (t.type === "add") trend[month].added += t.amount;
+        if (t.type === "spent") trend[month].spent += t.amount;
+      });
+
+      const months = Object.keys(trend);
+      const addedData = months.map(m => trend[m].added);
+      const spentData = months.map(m => trend[m].spent);
+
+      new Chart(document.getElementById("lineChart"), {
+        type: "line",
+        data: {
+          labels: months,
+          datasets: [
+            {
+              label: "Added (₹)",
+              data: addedData,
+              borderColor: "#10b981",
+              fill: false
+            },
+            {
+              label: "Spent (₹)",
+              data: spentData,
+              borderColor: "#ef4444",
+              fill: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                color: "#fff"
+              },
+              grid: {
+                color: "rgba(255,255,255,0.1)"
+              }
+            },
+            x: {
+              ticks: {
+                color: "#fff"
+              },
+              grid: {
+                display: false
+              }
+            }
+          },
+          plugins: {
+            legend: {
+              labels: { color: "#fff" }
+            }
+          }
+        }
+      });
+    }
+
+    window.onload = loadReport;
+  </script>
+</body>
+</html>

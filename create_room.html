@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Create Room</title>
+  <script src="https://cdn.jsdelivr.net/npm/backendless@7"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #3b82f6;
+      --primary-dark: #1e3a8a;
+      --primary-light: #60a5fa;
+      --background: #0f172a;
+      --card-bg: #1e293b;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--background);
+      color: var(--text-primary);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+    
+    .card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+      width: 100%;
+      max-width: 400px;
+      margin: 20px;
+      transition: transform 0.3s ease;
+    }
+    
+    .card:hover {
+      transform: translateY(-5px);
+    }
+    
+    h2 {
+      color: var(--primary);
+      font-size: 1.8rem;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 25px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    
+    h2 i {
+      color: var(--primary-light);
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+    
+    input {
+      width: 100%;
+      padding: 12px 15px;
+      margin-bottom: 20px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-size: 1rem;
+      transition: all 0.3s ease;
+    }
+    
+    input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+    }
+    
+    button {
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      width: 100%;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    
+    button:hover {
+      background-color: #2563eb;
+      transform: translateY(-2px);
+    }
+    
+    .message {
+      margin-top: 20px;
+      padding: 12px 15px;
+      border-radius: 8px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-align: center;
+    }
+    
+    .success {
+      background-color: rgba(16, 185, 129, 0.2);
+      color: var(--success);
+    }
+    
+    .error {
+      background-color: rgba(239, 68, 68, 0.2);
+      color: var(--danger);
+    }
+    
+    .back-link {
+      display: block;
+      text-align: center;
+      margin-top: 20px;
+      color: var(--primary-light);
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: color 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    
+    .back-link:hover {
+      color: var(--primary);
+    }
+    
+    @media (max-width: 480px) {
+      .card {
+        padding: 25px 20px;
+      }
+      
+      h2 {
+        font-size: 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2><i class="fas fa-plus-circle"></i> Create Room</h2>
+    <form id="createRoomForm">
+      <label for="roomName">Room Name</label>
+      <input type="text" id="roomName" placeholder="Enter room name" required minlength="3" />
+      
+      <label for="roomPassword">Room Password</label>
+      <input type="password" id="roomPassword" placeholder="Create a password" required minlength="4" />
+      
+      <button type="submit">
+        <i class="fas fa-door-open"></i> Create Room
+      </button>
+    </form>
+    
+    <div id="message" class="message"></div>
+    
+    <a href="main.html" class="back-link">
+      <i class="fas fa-arrow-left"></i> Back to Dashboard
+    </a>
+  </div>
+
+  <script>
+    Backendless.initApp({
+      appId: "3E6C2C39-6779-4034-B008-C3043326DE7A",
+      apiKey: "ACFC4906-9EF5-4356-9F9D-42B8D7397E0B"
+    });
+
+    // Generate random 6 character alphanumeric room code
+    function generateRoomCode(length = 6) {
+      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+      let result = "";
+      for(let i = 0; i < length; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return result;
+    }
+
+    async function createRoom(data) {
+      // This will auto-create Rooms table and columns if needed
+      return Backendless.Data.of("Rooms").save(data);
+    }
+
+    async function addMember(data) {
+      // This will auto-create Members table and columns if needed
+      return Backendless.Data.of("Members").save(data);
+    }
+
+    document.getElementById("createRoomForm").addEventListener("submit", async e => {
+      e.preventDefault();
+
+      const messageDiv = document.getElementById("message");
+      messageDiv.textContent = "";
+      messageDiv.className = "message";
+
+      const roomName = document.getElementById("roomName").value.trim();
+      const roomPassword = document.getElementById("roomPassword").value.trim();
+
+      if (!roomName || !roomPassword) {
+        showMessage("Please fill all fields.", true);
+        return;
+      }
+
+      try {
+        const currentUser = await Backendless.UserService.getCurrentUser();
+        if (!currentUser) {
+          showMessage("You must be logged in to create a room.", true);
+          return;
+        }
+
+        // Generate a unique room code (no duplicate check here - optional)
+        const roomCode = generateRoomCode();
+
+        // Room data object - will auto-create 'Rooms' table & columns
+        const roomData = {
+          roomCode,
+          roomName,
+          roomPassword,
+          createdBy: currentUser.objectId,
+          createdByName: currentUser.name || currentUser.email,
+          createdByEmail: currentUser.email
+        };
+
+        // Save room (auto table & columns creation if needed)
+        const savedRoom = await createRoom(roomData);
+
+        // Add creator as admin member with approved status (auto create 'Members' table)
+        const memberData = {
+          userId: currentUser.objectId,
+          userName: currentUser.name || currentUser.email,
+          userEmail: currentUser.email,
+          roomCode,
+          roomName,
+          role: "admin",
+          status: "approved"
+        };
+
+        await addMember(memberData);
+
+        showMessage(`Room created successfully! Room Code: ${roomCode}`);
+
+        // Reset form
+        e.target.reset();
+
+      } catch (err) {
+        showMessage("Error creating room: " + err.message, true);
+      }
+    });
+
+    function showMessage(text, isError = false) {
+      const messageDiv = document.getElementById("message");
+      messageDiv.textContent = text;
+      messageDiv.className = "message " + (isError ? "error" : "success");
+      messageDiv.innerHTML = `<i class="fas ${isError ? 'fa-exclamation-circle' : 'fa-check-circle'}"></i> ${text}`;
+      
+      // Clear message after 5 seconds
+      if (!isError) {
+        setTimeout(() => {
+          messageDiv.textContent = '';
+          messageDiv.className = 'message';
+        }, 5000);
+      }
+    }
+  </script>
+</body>
+</html>

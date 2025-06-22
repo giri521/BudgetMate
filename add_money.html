@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Add Money</title>
+  <script src="https://cdn.jsdelivr.net/npm/backendless@7"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #3b82f6;
+      --primary-dark: #1e3a8a;
+      --primary-light: #60a5fa;
+      --background: #0f172a;
+      --card-bg: #1e293b;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      margin: 0;
+      background: var(--background);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+    
+    .app-container {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    
+    .sidebar-toggle {
+      display: none;
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      z-index: 100;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      font-size: 1.2rem;
+      cursor: pointer;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+    
+    .sidebar {
+      width: 260px;
+      background: var(--primary-dark);
+      padding: 20px 0;
+      display: flex;
+      flex-direction: column;
+      transition: all 0.3s ease;
+      box-shadow: 4px 0 15px rgba(0, 0, 0, 0.1);
+      z-index: 10;
+      position: fixed;
+      height: 100vh;
+      overflow-y: auto;
+    }
+    
+    .sidebar-header {
+      padding: 0 20px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      margin-bottom: 20px;
+    }
+    
+    .sidebar-header h3 {
+      color: white;
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .sidebar-header h3 i {
+      color: var(--primary-light);
+    }
+    
+    .sidebar a {
+      color: var(--text-primary);
+      text-decoration: none;
+      padding: 12px 25px;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-left: 3px solid transparent;
+      opacity: 0.9;
+    }
+    
+    .sidebar a:hover {
+      background: rgba(255, 255, 255, 0.1);
+      opacity: 1;
+      border-left: 3px solid var(--primary-light);
+    }
+    
+    .sidebar a i {
+      width: 20px;
+      text-align: center;
+    }
+    
+    .sidebar a.active {
+      background: rgba(255, 255, 255, 0.1);
+      border-left: 3px solid var(--primary);
+      opacity: 1;
+    }
+    
+    .main {
+      flex: 1;
+      padding: 30px;
+      overflow-y: auto;
+      background: var(--background);
+      margin-left: 260px;
+      min-height: 100vh;
+    }
+    
+    .header {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+    
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+    
+    h2 {
+      color: var(--primary);
+      font-size: 1.8rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    h2 i {
+      color: var(--primary-light);
+    }
+    
+    .card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 25px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      margin-bottom: 30px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+      width: 100%;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+    
+    select, input[type="number"] {
+      width: 100%;
+      padding: 12px 15px;
+      margin-bottom: 20px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-size: 1rem;
+      transition: all 0.3s ease;
+    }
+    
+    select:focus, input[type="number"]:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+    }
+    
+    button {
+      background-color: var(--success);
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      width: 100%;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    
+    button:hover {
+      background-color: #059669;
+      transform: translateY(-2px);
+    }
+    
+    .message {
+      margin-top: 20px;
+      padding: 12px 15px;
+      border-radius: 8px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .success {
+      background-color: rgba(16, 185, 129, 0.2);
+      color: var(--success);
+    }
+    
+    .error {
+      background-color: rgba(239, 68, 68, 0.2);
+      color: var(--danger);
+    }
+    
+    .logout-btn {
+      background-color: var(--danger);
+      padding: 8px 15px;
+      border-radius: 6px;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .logout-btn:hover {
+      background-color: #dc2626;
+    }
+    
+    .room-info {
+      font-size: 1rem;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    
+    .room-info i {
+      color: var(--primary-light);
+    }
+    
+    /* Mobile styles */
+    @media (max-width: 992px) {
+      .sidebar {
+        transform: translateX(-100%);
+        position: fixed;
+      }
+      
+      .sidebar.active {
+        transform: translateX(0);
+      }
+      
+      .main {
+        margin-left: 0;
+        padding-top: 70px;
+      }
+      
+      .sidebar-toggle {
+        display: block;
+      }
+      
+      .header {
+        flex-direction: column;
+      }
+      
+      .card {
+        padding: 20px;
+      }
+    }
+    
+    @media (max-width: 576px) {
+      .main {
+        padding: 20px 15px;
+      }
+      
+      h2 {
+        font-size: 1.5rem;
+      }
+      
+      .room-info {
+        font-size: 0.9rem;
+      }
+      
+      .logout-btn span {
+        display: none;
+      }
+      
+      .logout-btn {
+        padding: 8px 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <button class="sidebar-toggle" id="sidebarToggle">
+      <i class="fas fa-bars"></i>
+    </button>
+    
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebarMenu">
+      <div class="sidebar-header">
+        <h3><i class="fas fa-wallet"></i> <span>BudgetMate</span></h3>
+      </div>
+      <!-- Links will be injected here dynamically -->
+    </div>
+
+    <!-- Main Content -->
+    <div class="main">
+      <div class="header">
+        <div class="header-top">
+          <div>
+            <h2><i class="fas fa-plus-circle"></i> Add Money</h2>
+          </div>
+          <button class="logout-btn" onclick="logout()">
+            <i class="fas fa-sign-out-alt"></i>
+            <span class="desktop-text">Logout</span>
+          </button>
+        </div>
+        <div class="room-info" id="roomInfo">
+          <i class="fas fa-door-closed"></i>
+          <span>Loading room info...</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <label for="memberSelect">Member Who Paid</label>
+        <select id="memberSelect">
+          <option value="">Loading members...</option>
+        </select>
+
+        <label for="amount">Amount</label>
+        <input type="number" id="amount" placeholder="Enter amount" min="1" required />
+
+        <label for="paymentType">Paid By</label>
+        <select id="paymentType">
+          <option value="Cash">Cash</option>
+          <option value="Paytm">Paytm</option>
+          <option value="GooglePay">Google Pay</option>
+          <option value="PhonePe">PhonePe</option>
+        </select>
+
+        <button onclick="submitTransaction()">
+          <i class="fas fa-check-circle"></i> Add Transaction
+        </button>
+
+        <div class="message" id="message"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    Backendless.initApp({
+      appId: "3E6C2C39-6779-4034-B008-C3043326DE7A",
+      apiKey: "ACFC4906-9EF5-4356-9F9D-42B8D7397E0B"
+    });
+
+    let currentUser, currentRoomId, currentRoom;
+
+    const memberSelect = document.getElementById("memberSelect");
+    const amountInput = document.getElementById("amount");
+    const paymentType = document.getElementById("paymentType");
+    const messageDiv = document.getElementById("message");
+    const sidebarMenu = document.getElementById("sidebarMenu");
+    const roomInfoDiv = document.getElementById("roomInfo");
+    const sidebarToggle = document.getElementById("sidebarToggle");
+    const sidebar = document.getElementById("sidebarMenu");
+
+    function showMessage(text, isError = false) {
+      messageDiv.textContent = text;
+      messageDiv.className = "message " + (isError ? "error" : "success");
+      messageDiv.innerHTML = `<i class="fas ${isError ? 'fa-exclamation-circle' : 'fa-check-circle'}"></i> ${text}`;
+      
+      // Clear message after 5 seconds
+      setTimeout(() => {
+        messageDiv.textContent = '';
+        messageDiv.className = 'message';
+      }, 5000);
+    }
+
+    function getRoomIdFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("roomId");
+    }
+
+    function logout() {
+      Backendless.UserService.logout()
+        .then(() => window.location.href = "index.html")
+        .catch(err => showMessage("Logout failed: " + err.message, true));
+    }
+
+    // Toggle sidebar on mobile
+    sidebarToggle.addEventListener('click', () => {
+      sidebar.classList.toggle('active');
+    });
+
+    // Close sidebar when clicking outside on mobile
+    document.addEventListener('click', (e) => {
+      if (window.innerWidth <= 992 && 
+          !sidebar.contains(e.target) && 
+          e.target !== sidebarToggle) {
+        sidebar.classList.remove('active');
+      }
+    });
+
+    async function loadMembers() {
+      try {
+        currentUser = await Backendless.UserService.getCurrentUser();
+        if (!currentUser) return window.location.href = "index.html";
+
+        currentRoomId = getRoomIdFromUrl();
+        if (!currentRoomId) return window.location.href = "room_dashboard.html";
+
+        const room = await Backendless.Data.of("Rooms").findById(currentRoomId);
+        if (!room) return window.location.href = "main.html";
+
+        currentRoom = room;
+        roomInfoDiv.innerHTML = `<i class="fas fa-door-closed"></i> <span>Room: ${room.roomName} | Code: ${room.roomCode}</span>`;
+
+        // Update sidebar with links
+        sidebarMenu.innerHTML += `
+          <a href="room_dashboard.html?roomId=${currentRoomId}">
+            <i class="fas fa-tachometer-alt"></i>
+            <span>Overview</span>
+          </a>
+          <a href="room_dashboard.html?roomId=${currentRoomId}#pendingSection">
+            <i class="fas fa-user-check"></i>
+            <span>Approve Requests</span>
+          </a>
+          <a href="room_dashboard.html?roomId=${currentRoomId}#membersSection">
+            <i class="fas fa-users"></i>
+            <span>Manage Members</span>
+          </a>
+          <a href="add_money.html?roomId=${currentRoomId}" class="active">
+            <i class="fas fa-plus-circle"></i>
+            <span>Add Money</span>
+          </a>
+          <a href="spent_money.html?roomId=${currentRoomId}">
+            <i class="fas fa-minus-circle"></i>
+            <span>Spent Money</span>
+          </a>
+          <a href="transactions.html?roomId=${currentRoomId}">
+            <i class="fas fa-exchange-alt"></i>
+            <span>Transactions</span>
+          </a>
+          <a href="download_pdf.html?roomId=${currentRoomId}">
+            <i class="fas fa-file-pdf"></i>
+            <span>Download PDF</span>
+          </a>
+        `;
+
+        const query = Backendless.DataQueryBuilder.create().setWhereClause(`roomCode = '${room.roomCode}' AND status = 'approved'`);
+        const members = await Backendless.Data.of("Members").find(query);
+
+        if (!members.length) {
+          memberSelect.innerHTML = `<option value="">No approved members found</option>`;
+          return;
+        }
+
+        memberSelect.innerHTML = members.map(m => `<option value="${m.userId}|${m.userName}">${m.userName}</option>`).join("");
+      } catch (err) {
+        showMessage("Failed to load members: " + err.message, true);
+      }
+    }
+
+    async function submitTransaction() {
+      const selected = memberSelect.value;
+      const amount = parseFloat(amountInput.value);
+      const paidType = paymentType.value;
+
+      if (!selected || !amount || amount <= 0) {
+        showMessage("Please fill all fields correctly.", true);
+        return;
+      }
+
+      const [userId, userName] = selected.split("|");
+
+      const transaction = {
+        roomCode: currentRoom.roomCode,
+        userId,
+        userName,
+        amount,
+        paidType,
+        type: "add",
+        timestamp: new Date().toISOString()
+      };
+
+      try {
+        await Backendless.Data.of("Transactions").save(transaction);
+        showMessage("Money added successfully.");
+        amountInput.value = "";
+      } catch (err) {
+        showMessage("Error saving transaction: " + err.message, true);
+      }
+    }
+
+    window.onload = loadMembers;
+  </script>
+</body>
+</html>

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Manage Rooms</title>
+  <script src="https://cdn.jsdelivr.net/npm/backendless@7"></script>
+  <style>
+    body {
+      background: #0f172a;
+      font-family: Arial, sans-serif;
+      color: #fff;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 30px;
+      background: #1e293b;
+      border-radius: 10px;
+      box-shadow: 0 0 15px #38bdf8;
+    }
+
+    h2 {
+      text-align: center;
+      color: #38bdf8;
+      margin-bottom: 25px;
+    }
+
+    .room-card {
+      background: #334155;
+      padding: 20px;
+      margin-bottom: 15px;
+      border-radius: 8px;
+      box-shadow: 0 0 5px #0ea5e9;
+    }
+
+    .room-card h3 {
+      margin: 0 0 10px;
+      color: #fcd34d;
+    }
+
+    .room-card p {
+      margin: 5px 0;
+      color: #e0f2fe;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    button {
+      background: #38bdf8;
+      border: none;
+      color: black;
+      padding: 10px 15px;
+      border-radius: 5px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .delete-btn {
+      background: #ef4444;
+      color: white;
+    }
+
+    .message {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 16px;
+    }
+
+    .success {
+      color: #4ade80;
+    }
+
+    .error {
+      color: #f87171;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h2>Manage My Rooms</h2>
+  <div id="roomsList"></div>
+  <div id="message" class="message"></div>
+</div>
+
+<script>
+  Backendless.initApp({
+    appId: "3E6C2C39-6779-4034-B008-C3043326DE7A",
+    apiKey: "ACFC4906-9EF5-4356-9F9D-42B8D7397E0B"
+  });
+
+  async function fetchRooms() {
+    const message = document.getElementById("message");
+    const roomsList = document.getElementById("roomsList");
+    message.textContent = "";
+    roomsList.innerHTML = "";
+
+    try {
+      const user = await Backendless.UserService.getCurrentUser();
+      if (!user) {
+        message.textContent = "You must be logged in to manage rooms.";
+        message.classList.add("error");
+        return;
+      }
+
+      const query = Backendless.DataQueryBuilder.create().setWhereClause(`ownerId = '${user.objectId}'`);
+      const rooms = await Backendless.Data.of("Rooms").find(query);
+
+      if (rooms.length === 0) {
+        roomsList.innerHTML = "<p>No rooms found. You are not the owner of any rooms.</p>";
+        return;
+      }
+
+      rooms.forEach(room => {
+        const div = document.createElement("div");
+        div.className = "room-card";
+
+        div.innerHTML = `
+          <h3>${room.roomName}</h3>
+          <p><strong>Room Code:</strong> ${room.roomCode}</p>
+          <p><strong>Members:</strong> ${(room.members || []).length}</p>
+          <div class="button-group">
+            <button onclick="viewRoom('${room.objectId}')">View Room</button>
+            <button class="delete-btn" onclick="deleteRoom('${room.objectId}')">Delete Room</button>
+          </div>
+        `;
+
+        roomsList.appendChild(div);
+      });
+    } catch (err) {
+      message.textContent = "Error: " + err.message;
+      message.classList.add("error");
+    }
+  }
+
+  function viewRoom(roomId) {
+    window.location.href = `room_dashboard.html?roomId=${roomId}`;
+  }
+
+  async function deleteRoom(roomId) {
+    const confirmed = confirm("Are you sure you want to delete this room?");
+    if (!confirmed) return;
+
+    const message = document.getElementById("message");
+    message.textContent = "";
+
+    try {
+      await Backendless.Data.of("Rooms").remove(roomId);
+      message.textContent = "Room deleted successfully.";
+      message.className = "message success";
+      fetchRooms(); // Refresh the list
+    } catch (err) {
+      message.textContent = "Error: " + err.message;
+      message.className = "message error";
+    }
+  }
+
+  fetchRooms();
+</script>
+
+</body>
+</html>

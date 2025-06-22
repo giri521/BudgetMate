@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Transactions</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.jsdelivr.net/npm/backendless@7"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #3b82f6;
+      --primary-dark: #1e3a8a;
+      --primary-light: #60a5fa;
+      --background: #0f172a;
+      --card-bg: #1e293b;
+      --text-primary: #f8fafc;
+      --success: #10b981;
+      --danger: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: var(--background);
+      color: var(--text-primary);
+      display: flex;
+      min-height: 100vh;
+      position: relative;
+    }
+
+    .sidebar {
+      width: 260px;
+      background: var(--primary-dark);
+      padding: 20px 0;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.3s ease;
+      position: fixed;
+      height: 100vh;
+      z-index: 100;
+    }
+
+    .sidebar-header {
+      padding: 0 20px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .sidebar a {
+      color: white;
+      padding: 12px 25px;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: background 0.2s;
+    }
+
+    .sidebar a:hover, .sidebar a.active {
+      background: rgba(255,255,255,0.1);
+    }
+
+    .main {
+      flex: 1;
+      padding: 30px;
+      margin-left: 260px;
+      width: calc(100% - 260px);
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+
+    .header h2 {
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: clamp(1.2rem, 2vw, 1.5rem);
+    }
+
+    .header button {
+      background: var(--danger);
+      color: white;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
+    .split-container {
+      display: flex;
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      padding: 20px;
+      border-radius: 10px;
+      flex: 1;
+      overflow-x: auto;
+    }
+
+    .card h3 {
+      margin-bottom: 15px;
+      color: var(--primary-light);
+      font-size: 1.1rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      min-width: 500px;
+    }
+
+    th, td {
+      padding: 12px 10px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      font-size: 0.9rem;
+    }
+
+    .btn-delete {
+      color: var(--danger);
+      cursor: pointer;
+      border: none;
+      background: none;
+      padding: 5px;
+      font-size: 1rem;
+    }
+
+    .menu-toggle {
+      display: none;
+      background: none;
+      border: none;
+      color: white;
+      font-size: 1.5rem;
+      cursor: pointer;
+    }
+
+    /* Responsive styles */
+    @media (max-width: 1024px) {
+      .split-container {
+        flex-direction: column;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        transform: translateX(-100%);
+        width: 280px;
+      }
+      
+      .sidebar.active {
+        transform: translateX(0);
+      }
+      
+      .main {
+        margin-left: 0;
+        width: 100%;
+        padding: 20px;
+      }
+      
+      .menu-toggle {
+        display: block;
+      }
+      
+      table {
+        min-width: 300px;
+      }
+      
+      th, td {
+        padding: 8px 6px;
+        font-size: 0.8rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      
+      .card {
+        padding: 15px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h3><i class="fas fa-exchange-alt"></i> <span>Transactions</span></h3>
+      <button class="menu-toggle" id="closeSidebar"><i class="fas fa-times"></i></button>
+    </div>
+    <a href="#" id="dashboardLink"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+    <div id="adminLinks"></div>
+<a href="#" id="overviewLink"><i class="fas fa-chart-pie"></i> Overview</a>
+    <a href="#" class="active"><i class="fas fa-exchange-alt"></i> Transactions</a>
+    <a href="#" id="downloadLink"><i class="fas fa-file-pdf"></i> Download PDF</a>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main">
+    <div class="header">
+      <div style="display: flex; align-items: center; gap: 15px;">
+        <button class="menu-toggle" id="openSidebar"><i class="fas fa-bars"></i></button>
+        <h2><i class="fas fa-exchange-alt"></i> Room Transactions</h2>
+      </div>
+      <button id="resetBtn" style="display: none;">Reset All</button>
+    </div>
+
+    <div class="split-container">
+      <div class="card">
+        <h3><i class="fas fa-plus-circle"></i> Add Money</h3>
+        <div style="overflow-x: auto;">
+          <table id="addTable">
+            <thead>
+              <tr>
+                <th>Name</th><th>Amount</th><th>Payment</th><th>Date</th><th>Action</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3><i class="fas fa-minus-circle"></i> Spent Money</h3>
+        <div style="overflow-x: auto;">
+          <table id="spentTable">
+            <thead>
+              <tr>
+                <th>Name</th><th>Amount</th><th>Each Pays</th><th>For</th><th>Date</th><th>Action</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    Backendless.initApp({
+      appId: "3E6C2C39-6779-4034-B008-C3043326DE7A",
+      apiKey: "ACFC4906-9EF5-4356-9F9D-42B8D7397E0B"
+    });
+
+    let roomId = new URLSearchParams(location.search).get("roomId");
+    let roomCode = "";
+    let isAdmin = false;
+
+    // Sidebar toggle functionality
+    function setupSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const openBtn = document.getElementById('openSidebar');
+      const closeBtn = document.getElementById('closeSidebar');
+      
+      openBtn.addEventListener('click', () => {
+        sidebar.classList.add('active');
+      });
+      
+      closeBtn.addEventListener('click', () => {
+        sidebar.classList.remove('active');
+      });
+      
+      // Close sidebar when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!sidebar.contains(e.target) && e.target !== openBtn) {
+          sidebar.classList.remove('active');
+        }
+      });
+    }
+
+    async function loadTransactions() {
+      const user = await Backendless.UserService.getCurrentUser();
+      if (!user) return location.href = "index.html";
+
+      const room = await Backendless.Data.of("Rooms").findById(roomId);
+      if (!room) return location.href = "room_dashboard.html";
+      roomCode = room.roomCode;
+
+      const memberQuery = Backendless.DataQueryBuilder.create()
+        .setWhereClause(`roomCode = '${roomCode}' AND userId = '${user.objectId}'`);
+      const members = await Backendless.Data.of("Members").find(memberQuery);
+      const currentMember = members[0];
+      isAdmin = currentMember?.role === "admin";
+
+      // Set links
+          document.getElementById("overviewLink").href = `overview.html?roomId=${roomId}`;
+
+      
+      document.getElementById("dashboardLink").href = `room_dashboard.html?roomId=${roomId}`;
+      document.getElementById("downloadLink").href = `download_pdf.html?roomId=${roomId}`;
+
+      // Show admin links
+      if (isAdmin) {
+        document.getElementById("adminLinks").innerHTML = `
+          <a href="add_money.html?roomId=${roomId}"><i class="fas fa-plus-circle"></i> Add Money</a>
+          <a href="spent_money.html?roomId=${roomId}"><i class="fas fa-minus-circle"></i> Spent Money</a>
+        `;
+        document.getElementById("resetBtn").style.display = "inline-block";
+      }
+
+      const query = Backendless.DataQueryBuilder.create()
+        .setWhereClause(`roomCode = '${roomCode}'`)
+        .setSortBy(["timestamp DESC"]);
+
+      const transactions = await Backendless.Data.of("Transactions").find(query);
+      const addTable = document.querySelector("#addTable tbody");
+      const spentTable = document.querySelector("#spentTable tbody");
+
+      addTable.innerHTML = "";
+      spentTable.innerHTML = "";
+
+      transactions.forEach(t => {
+        const date = new Date(t.timestamp).toLocaleString();
+        const delBtn = isAdmin ? `<button class="btn-delete" onclick="deleteTransaction('${t.objectId}')" aria-label="Delete transaction"><i class="fas fa-trash"></i></button>` : "-";
+
+        if (t.type === "add") {
+          addTable.innerHTML += `
+            <tr>
+              <td>${t.userName}</td>
+              <td>₹${t.amount.toFixed(2)}</td>
+              <td>${t.paidType || "-"}</td>
+              <td>${date}</td>
+              <td>${delBtn}</td>
+            </tr>`;
+        } else if (t.type === "spent") {
+          spentTable.innerHTML += `
+            <tr>
+              <td>${t.userName}</td>
+              <td>₹${t.amount.toFixed(2)}</td>
+              <td>₹${t.splitAmount?.toFixed(2) || "-"}</td>
+              <td>${t.category || "-"}</td>
+              <td>${date}</td>
+              <td>${delBtn}</td>
+            </tr>`;
+        }
+      });
+    }
+
+    async function deleteTransaction(id) {
+      if (!confirm("Delete this transaction?")) return;
+      await Backendless.Data.of("Transactions").remove(id);
+      loadTransactions();
+    }
+
+    async function resetAllTransactions() {
+      if (!confirm("Delete ALL transactions?")) return;
+      const query = Backendless.DataQueryBuilder.create().setWhereClause(`roomCode = '${roomCode}'`);
+      const all = await Backendless.Data.of("Transactions").find(query);
+      await Promise.all(all.map(t => Backendless.Data.of("Transactions").remove(t.objectId)));
+      loadTransactions();
+    }
+
+    document.getElementById("resetBtn").addEventListener("click", resetAllTransactions);
+    window.deleteTransaction = deleteTransaction;
+    
+    document.addEventListener('DOMContentLoaded', () => {
+      setupSidebar();
+      loadTransactions();
+    });
+  </script>
+
+</body>
+</html>

@@ -602,37 +602,91 @@
       appId: "3E6C2C39-6779-4034-B008-C3043326DE7A",
       apiKey: "ACFC4906-9EF5-4356-9F9D-42B8D7397E0B"
     });
-
     async function loadOverview() {
-      try {
-        const params = new URLSearchParams(window.location.search);
-        const roomId = params.get("roomId");
-        if (!roomId) {
-          window.location.href = "main.html";
-          return;
-        }
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const roomId = params.get("roomId");
+    if (!roomId) {
+      window.location.href = "main.html";
+      return;
+    }
 
-        const currentUser = await Backendless.UserService.getCurrentUser();
-        if (!currentUser) {
-          window.location.href = "index.html";
-          return;
-        }
+    const currentUser = await Backendless.UserService.getCurrentUser();
+    if (!currentUser) {
+      window.location.href = "index.html";
+      return;
+    }
 
-        const room = await Backendless.Data.of("Rooms").findById(roomId);
-        if (!room) {
-          window.location.href = "main.html";
-          return;
-        }
+    const room = await Backendless.Data.of("Rooms").findById(roomId);
+    if (!room) {
+      window.location.href = "main.html";
+      return;
+    }
 
-        // Update room info badges
-        document.getElementById("roomNameBadge").innerHTML = `
-          <i class="fas fa-door-closed"></i>
-          <span>${room.roomName}</span>
-        `;
-        document.getElementById("roomCodeBadge").innerHTML = `
-          <i class="fas fa-key"></i>
-          <span>Code: ${room.roomCode}</span>
-        `;
+    // Update room info badges
+    document.getElementById("roomNameBadge").innerHTML = `
+      <i class="fas fa-door-closed"></i>
+      <span>${room.roomName}</span>
+    `;
+    document.getElementById("roomCodeBadge").innerHTML = `
+      <i class="fas fa-key"></i>
+      <span>Code: ${room.roomCode}</span>
+    `;
+
+    // Check admin role
+    const memberQuery = Backendless.DataQueryBuilder.create()
+      .setWhereClause(`roomCode = '${room.roomCode}' AND userId = '${currentUser.objectId}'`);
+    const members = await Backendless.Data.of("Members").find(memberQuery);
+    const isAdmin = members.length && members[0].role === "admin";
+
+    // Render sidebar
+    document.querySelector(".sidebar-nav").innerHTML = `
+      <a href="room_dashboard.html?roomId=${roomId}"><i class="fas fa-tachometer-alt"></i> <span>Dashboard</span></a>
+      ${isAdmin ? `<a href="add_money.html?roomId=${roomId}"><i class="fas fa-plus-circle"></i> <span>Add Money</span></a>` : ''}
+      ${isAdmin ? `<a href="spent_money.html?roomId=${roomId}"><i class="fas fa-minus-circle"></i> <span>Spent Money</span></a>` : ''}
+      <a href="transactions.html?roomId=${roomId}"><i class="fas fa-exchange-alt"></i> <span>Transactions</span></a>
+      <a href="overview.html?roomId=${roomId}" class="active"><i class="fas fa-chart-pie"></i> <span>Overview</span></a>
+      <a href="download_pdf.html?roomId=${roomId}"><i class="fas fa-file-pdf"></i> <span>Download PDF</span></a>
+    `;
+
+    // Load ALL transactions (using large pageSize approach)
+    const query = Backendless.DataQueryBuilder.create()
+      .setWhereClause(`roomCode = '${room.roomCode}'`)
+      .setSortBy(["created desc"])
+      .setPageSize(1000); // Fetch up to 1000 transactions
+
+    const transactions = await Backendless.Data.of("Transactions").find(query);
+
+    // Calculate totals and categories
+    let totalAdded = 0, totalSpent = 0;
+    let spentCategories = {}, monthlyData = {}, recent = [];
+
+    transactions.forEach((t, index) => {
+      if (t.type === "add") {
+        totalAdded += t.amount;
+      } else if (t.type === "spent") {
+        totalSpent += t.amount;
+        spentCategories[t.category] = (spentCategories[t.category] || 0) + t.amount;
+
+        const month = new Date(t.created).toLocaleString('default', { month: 'short', year: 'numeric' });
+        monthlyData[month] = (monthlyData[month] || 0) + t.amount;
+      }
+
+      if (index < 5) recent.push(t); // Still only show 5 most recent in the table
+    });
+
+    const balance = totalAdded - totalSpent;
+    document.getElementById("totalAdded").textContent = "₹" + totalAdded.toFixed(2);
+    document.getElementById("totalSpent").textContent = "₹" + totalSpent.toFixed(2);
+    document.getElementById("balance").textContent = "₹" + balance.toFixed(2);
+
+    // Rest of your code remains the same...
+    // [Keep all the chart creation and table population code]
+    
+  } catch (err) {
+    console.error("Error loading overview:", err);
+  }
+}
 
         // Check admin role
         const memberQuery = Backendless.DataQueryBuilder.create()

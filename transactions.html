@@ -253,151 +253,129 @@
   </div>
 
   <script>
-    Backendless.initApp({
-      appId: "3E6C2C39-6779-4034-B008-C3043326DE7A",
-      apiKey: "ACFC4906-9EF5-4356-9F9D-42B8D7397E0B"
+  Backendless.initApp({
+    appId: "3E6C2C39-6779-4034-B008-C3043326DE7A",
+    apiKey: "ACFC4906-9EF5-4356-9F9D-42B8D7397E0B"
+  });
+
+  let roomId = new URLSearchParams(location.search).get("roomId");
+  let roomCode = "";
+  let isAdmin = false;
+
+  // Sidebar toggle functionality
+  function setupSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const openBtn = document.getElementById('openSidebar');
+    const closeBtn = document.getElementById('closeSidebar');
+    
+    openBtn.addEventListener('click', () => {
+      sidebar.classList.add('active');
     });
-
-    let roomId = new URLSearchParams(location.search).get("roomId");
-    let roomCode = "";
-    let isAdmin = false;
-
-    // Sidebar toggle functionality
-    function setupSidebar() {
-      const sidebar = document.getElementById('sidebar');
-      const openBtn = document.getElementById('openSidebar');
-      const closeBtn = document.getElementById('closeSidebar');
-      
-      openBtn.addEventListener('click', () => {
-        sidebar.classList.add('active');
-      });
-      
-      closeBtn.addEventListener('click', () => {
+    
+    closeBtn.addEventListener('click', () => {
+      sidebar.classList.remove('active');
+    });
+    
+    // Close sidebar when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!sidebar.contains(e.target) && e.target !== openBtn) {
         sidebar.classList.remove('active');
-      });
-      
-      // Close sidebar when clicking outside
-      document.addEventListener('click', (e) => {
-        if (!sidebar.contains(e.target) && e.target !== openBtn) {
-          sidebar.classList.remove('active');
-        }
-      });
+      }
+    });
+  }
+
+  async function loadTransactions() {
+    const user = await Backendless.UserService.getCurrentUser();
+    if (!user) return location.href = "index.html";
+
+    const room = await Backendless.Data.of("Rooms").findById(roomId);
+    if (!room) return location.href = "room_dashboard.html";
+    roomCode = room.roomCode;
+
+    const memberQuery = Backendless.DataQueryBuilder.create()
+      .setWhereClause(`roomCode = '${roomCode}' AND userId = '${user.objectId}'`);
+    const members = await Backendless.Data.of("Members").find(memberQuery);
+    const currentMember = members[0];
+    isAdmin = currentMember?.role === "admin";
+
+    // Set links
+    document.getElementById("overviewLink").href = `overview.html?roomId=${roomId}`;
+    document.getElementById("dashboardLink").href = `room_dashboard.html?roomId=${roomId}`;
+    document.getElementById("downloadLink").href = `download_pdf.html?roomId=${roomId}`;
+
+    // Show admin links
+    if (isAdmin) {
+      document.getElementById("adminLinks").innerHTML = `
+        <a href="add_money.html?roomId=${roomId}"><i class="fas fa-plus-circle"></i> Add Money</a>
+        <a href="spent_money.html?roomId=${roomId}"><i class="fas fa-minus-circle"></i> Spent Money</a>
+      `;
+      document.getElementById("resetBtn").style.display = "inline-block";
     }
 
-    async function loadAllTransactions() {
-      const user = await Backendless.UserService.getCurrentUser();
-      if (!user) return location.href = "index.html";
+    // ✅ Fix: Fetch up to 1000 transactions
+    const query = Backendless.DataQueryBuilder.create()
+      .setWhereClause(`roomCode = '${roomCode}'`)
+      .setSortBy(["timestamp DESC"])
+      .setPageSize(1000); // Ensures all transactions load
 
-      const room = await Backendless.Data.of("Rooms").findById(roomId);
-      if (!room) return location.href = "room_dashboard.html";
-      roomCode = room.roomCode;
+    const transactions = await Backendless.Data.of("Transactions").find(query);
+    const addTable = document.querySelector("#addTable tbody");
+    const spentTable = document.querySelector("#spentTable tbody");
 
-      const memberQuery = Backendless.DataQueryBuilder.create()
-        .setWhereClause(`roomCode = '${roomCode}' AND userId = '${user.objectId}'`);
-      const members = await Backendless.Data.of("Members").find(memberQuery);
-      const currentMember = members[0];
-      isAdmin = currentMember?.role === "admin";
+    addTable.innerHTML = "";
+    spentTable.innerHTML = "";
 
-      // Set links
-      document.getElementById("overviewLink").href = `overview.html?roomId=${roomId}`;
-      document.getElementById("dashboardLink").href = `room_dashboard.html?roomId=${roomId}`;
-      document.getElementById("downloadLink").href = `download_pdf.html?roomId=${roomId}`;
+    transactions.forEach(t => {
+      const date = new Date(t.timestamp).toLocaleString();
+      const delBtn = isAdmin
+        ? `<button class="btn-delete" onclick="deleteTransaction('${t.objectId}')" aria-label="Delete transaction"><i class="fas fa-trash"></i></button>`
+        : "-";
 
-      // Show admin links
-      if (isAdmin) {
-        document.getElementById("adminLinks").innerHTML = `
-          <a href="add_money.html?roomId=${roomId}"><i class="fas fa-plus-circle"></i> Add Money</a>
-          <a href="spent_money.html?roomId=${roomId}"><i class="fas fa-minus-circle"></i> Spent Money</a>
-        `;
-        document.getElementById("resetBtn").style.display = "inline-block";
-      }
-
-      // Create query to get all transactions
-      const query = Backendless.DataQueryBuilder.create()
-        .setWhereClause(`roomCode = '${roomCode}'`)
-        .setSortBy(["timestamp DESC"]);
-
-      // First get total count to determine if we need multiple requests
-      const count = await Backendless.Data.of("Transactions").getObjectCount(query);
-      
-      // Set page size to get all records (max is 1000 per request)
-      query.setPageSize(1000);
-      
-      // Fetch all transactions (may need multiple requests if >1000)
-      let allTransactions = [];
-      let offset = 0;
-      
-      while (offset < count) {
-        query.setOffset(offset);
-        const batch = await Backendless.Data.of("Transactions").find(query);
-        allTransactions = allTransactions.concat(batch);
-        offset += batch.length;
-        
-        // If we got fewer than requested, we've reached the end
-        if (batch.length < 1000) break;
-      }
-
-      const transactionsTable = document.querySelector("#transactionsTable tbody");
-      transactionsTable.innerHTML = "";
-
-      allTransactions.forEach(t => {
-        const date = new Date(t.timestamp).toLocaleString();
-        const delBtn = isAdmin ? `<button class="btn-delete" onclick="deleteTransaction('${t.objectId}')" aria-label="Delete transaction"><i class="fas fa-trash"></i></button>` : "-";
-        
-        let details = "";
-        if (t.type === "add") {
-          details = `Added via ${t.paidType || "unknown method"}`;
-        } else if (t.type === "spent") {
-          details = `Spent on ${t.category || "unknown"} (Each pays: ₹${t.splitAmount?.toFixed(2) || "0.00"})`;
-        }
-
-        transactionsTable.innerHTML += `
+      if (t.type === "add") {
+        addTable.innerHTML += `
           <tr>
-            <td>${date}</td>
-            <td><span class="transaction-type type-${t.type}">${t.type === "add" ? "Added" : "Spent"}</span></td>
-            <td>${t.userName || "Unknown"}</td>
+            <td>${t.userName}</td>
             <td>₹${t.amount.toFixed(2)}</td>
-            <td>${details}</td>
+            <td>${t.paidType || "-"}</td>
+            <td>${date}</td>
             <td>${delBtn}</td>
           </tr>`;
-      });
-    }
-
-    async function deleteTransaction(id) {
-      if (!confirm("Delete this transaction?")) return;
-      await Backendless.Data.of("Transactions").remove(id);
-      loadAllTransactions();
-    }
-
-    async function resetAllTransactions() {
-      if (!confirm("Delete ALL transactions? This cannot be undone!")) return;
-      
-      // Get all transaction IDs first
-      const query = Backendless.DataQueryBuilder.create()
-        .setWhereClause(`roomCode = '${roomCode}'`)
-        .setProperties(["objectId"]);
-      
-      const all = await Backendless.Data.of("Transactions").find(query);
-      
-      // Delete in batches to avoid timeout
-      const batchSize = 50;
-      for (let i = 0; i < all.length; i += batchSize) {
-        const batch = all.slice(i, i + batchSize);
-        await Promise.all(batch.map(t => 
-          Backendless.Data.of("Transactions").remove(t.objectId)
-        ));
+      } else if (t.type === "spent") {
+        spentTable.innerHTML += `
+          <tr>
+            <td>${t.userName}</td>
+            <td>₹${t.amount.toFixed(2)}</td>
+            <td>₹${t.splitAmount?.toFixed(2) || "-"}</td>
+            <td>${t.category || "-"}</td>
+            <td>${date}</td>
+            <td>${delBtn}</td>
+          </tr>`;
       }
-      
-      loadAllTransactions();
-    }
-
-    document.getElementById("resetBtn").addEventListener("click", resetAllTransactions);
-    window.deleteTransaction = deleteTransaction;
-    
-    document.addEventListener('DOMContentLoaded', () => {
-      setupSidebar();
-      loadAllTransactions();
     });
-  </script>
+  }
+
+  async function deleteTransaction(id) {
+    if (!confirm("Delete this transaction?")) return;
+    await Backendless.Data.of("Transactions").remove(id);
+    loadTransactions();
+  }
+
+  async function resetAllTransactions() {
+    if (!confirm("Delete ALL transactions?")) return;
+    const query = Backendless.DataQueryBuilder.create().setWhereClause(`roomCode = '${roomCode}'`);
+    const all = await Backendless.Data.of("Transactions").find(query);
+    await Promise.all(all.map(t => Backendless.Data.of("Transactions").remove(t.objectId)));
+    loadTransactions();
+  }
+
+  document.getElementById("resetBtn").addEventListener("click", resetAllTransactions);
+  window.deleteTransaction = deleteTransaction;
+
+  document.addEventListener('DOMContentLoaded', () => {
+    setupSidebar();
+    loadTransactions();
+  });
+</script>
+
 </body>
 </html>

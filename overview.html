@@ -1,12 +1,69 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- Previous head content remains the same -->
-  <!-- ... -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Room Overview</title>
+  <script src="https://cdn.jsdelivr.net/npm/backendless@7"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* Previous CSS remains the same */
+    /* ... */
+    
+    /* Add loading spinner style */
+    .loading-spinner {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      width: 100%;
+      position: fixed;
+      top: 0;
+      left: 0;
+      background: rgba(15, 23, 42, 0.8);
+      z-index: 9999;
+    }
+    
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 5px solid rgba(59, 130, 246, 0.3);
+      border-radius: 50%;
+      border-top-color: #3b82f6;
+      animation: spin 1s ease-in-out infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .error-message {
+      color: #ef4444;
+      background: rgba(239, 68, 68, 0.1);
+      padding: 15px;
+      border-radius: 8px;
+      margin: 20px;
+      border-left: 4px solid #ef4444;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .error-message i {
+      font-size: 1.2rem;
+    }
+  </style>
 </head>
 <body>
-  <!-- Previous HTML content remains the same -->
-  <!-- ... -->
+  <div id="loading" class="loading-spinner">
+    <div class="spinner"></div>
+  </div>
+
+  <div class="container" id="appContainer" style="display: none;">
+    <!-- Previous HTML content remains the same -->
+    <!-- ... -->
+  </div>
 
   <script>
     Backendless.initApp({
@@ -14,7 +71,7 @@
       apiKey: "ACFC4906-9EF5-4356-9F9D-42B8D7397E0B"
     });
 
-    // Pagination variables
+    // Global variables
     let currentPage = 1;
     const transactionsPerPage = 10;
     let totalTransactions = 0;
@@ -29,6 +86,8 @@
 
     async function loadOverview() {
       try {
+        showLoading();
+        
         const params = new URLSearchParams(window.location.search);
         const roomId = params.get("roomId");
         if (!roomId) {
@@ -48,158 +107,84 @@
           return;
         }
 
-        // Update room info badges
-        document.getElementById("roomNameBadge").innerHTML = `
-          <i class="fas fa-door-closed"></i>
-          <span>${room.roomName}</span>
-        `;
-        document.getElementById("roomCodeBadge").innerHTML = `
-          <i class="fas fa-key"></i>
-          <span>Code: ${room.roomCode}</span>
-        `;
+        // Update room info
+        updateRoomInfo(room);
 
         // Check admin role
-        const memberQuery = Backendless.DataQueryBuilder.create()
-          .setWhereClause(`roomCode = '${room.roomCode}' AND userId = '${currentUser.objectId}'`);
-        const members = await Backendless.Data.of("Members").find(memberQuery);
-        const isAdmin = members.length && members[0].role === "admin";
+        const isAdmin = await checkAdminRole(room.roomCode, currentUser.objectId);
+        renderSidebar(roomId, isAdmin);
 
-        // Render sidebar
-        document.querySelector(".sidebar-nav").innerHTML = `
-          <a href="room_dashboard.html?roomId=${roomId}"><i class="fas fa-tachometer-alt"></i> <span>Dashboard</span></a>
-          ${isAdmin ? `<a href="add_money.html?roomId=${roomId}"><i class="fas fa-plus-circle"></i> <span>Add Money</span></a>` : ''}
-          ${isAdmin ? `<a href="spent_money.html?roomId=${roomId}"><i class="fas fa-minus-circle"></i> <span>Spent Money</span></a>` : ''}
-          <a href="transactions.html?roomId=${roomId}"><i class="fas fa-exchange-alt"></i> <span>Transactions</span></a>
-          <a href="overview.html?roomId=${roomId}" class="active"><i class="fas fa-chart-pie"></i> <span>Overview</span></a>
-          <a href="download_pdf.html?roomId=${roomId}"><i class="fas fa-file-pdf"></i> <span>Download PDF</span></a>
-        `;
-
-        // First, calculate totals from ALL transactions
+        // Calculate totals from ALL transactions
         await calculateTotals(room.roomCode);
         
-        // Then load transactions for display (with pagination)
+        // Load transactions for display
         await loadTransactionsForDisplay(room.roomCode);
         
-        // Display first page of transactions
-        displayTransactions(currentPage);
-
-        // Update the UI with calculated totals
-        const balance = calculatedTotals.totalAdded - calculatedTotals.totalSpent;
-        document.getElementById("totalAdded").textContent = "₹" + calculatedTotals.totalAdded.toFixed(2);
-        document.getElementById("totalSpent").textContent = "₹" + calculatedTotals.totalSpent.toFixed(2);
-        document.getElementById("balance").textContent = "₹" + balance.toFixed(2);
-
-        // Create Pie Chart (Spending by Category)
-        const pieCtx = document.getElementById("pieChart").getContext("2d");
-        new Chart(pieCtx, {
-          type: "doughnut",
-          data: {
-            labels: Object.keys(calculatedTotals.spentCategories),
-            datasets: [{
-              data: Object.values(calculatedTotals.spentCategories),
-              backgroundColor: [
-                "#ef4444", "#f97316", "#eab308", "#10b981",
-                "#3b82f6", "#8b5cf6", "#ec4899", "#14b8a6",
-                "#f43f5e", "#84cc16", "#0ea5e9"
-              ],
-              borderWidth: 0,
-              borderRadius: 6
-            }]
-          },
-          options: {
-            cutout: '70%',
-            plugins: {
-              legend: {
-                position: 'right',
-                labels: {
-                  color: "#fff",
-                  padding: 20,
-                  usePointStyle: true,
-                  pointStyle: 'circle'
-                }
-              },
-              tooltip: {
-                backgroundColor: 'rgba(0,0,0,0.8)',
-                titleFont: { size: 14, weight: 'bold' },
-                bodyFont: { size: 12 },
-                padding: 12,
-                cornerRadius: 8,
-                displayColors: true,
-                usePointStyle: true,
-                callbacks: {
-                  label: function(context) {
-                    const label = context.label || '';
-                    const value = context.raw || 0;
-                    const percentage = Math.round((value / calculatedTotals.totalSpent) * 100);
-                    return `${label}: ₹${value.toFixed(2)} (${percentage}%)`;
-                  }
-                }
-              }
-            }
-          }
-        });
-
-        // Create Bar Chart (Monthly Spending Trend)
-        const barCtx = document.getElementById("barChart").getContext("2d");
-        new Chart(barCtx, {
-          type: "bar",
-          data: {
-            labels: Object.keys(calculatedTotals.monthlyData),
-            datasets: [{
-              label: "Monthly Spend (₹)",
-              data: Object.values(calculatedTotals.monthlyData),
-              backgroundColor: "#3b82f6",
-              borderRadius: 6,
-              borderSkipped: false
-            }]
-          },
-          options: {
-            responsive: true,
-            scales: {
-              x: {
-                grid: { display: false },
-                ticks: { color: "#94a3b8" }
-              },
-              y: {
-                grid: { color: "rgba(255,255,255,0.1)" },
-                ticks: { color: "#94a3b8" }
-              }
-            },
-            plugins: {
-              legend: { display: false },
-              tooltip: {
-                backgroundColor: 'rgba(0,0,0,0.8)',
-                titleFont: { size: 14, weight: 'bold' },
-                bodyFont: { size: 12 },
-                padding: 12,
-                cornerRadius: 8
-              }
-            }
-          }
-        });
-
-        // Populate Category Breakdown Table
-        const categoryBody = document.querySelector("#categoryTable tbody");
-        Object.entries(calculatedTotals.spentCategories).forEach(([cat, amt]) => {
-          const percentage = calculatedTotals.totalSpent > 0 ? Math.round((amt / calculatedTotals.totalSpent) * 100) : 0;
-          const row = `<tr>
-            <td>${cat}</td>
-            <td><strong>₹${amt.toFixed(2)}</strong></td>
-            <td>
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <span>${percentage}%</span>
-                <div style="flex: 1; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px;">
-                  <div style="width: ${percentage}%; height: 100%; background: var(--primary); border-radius: 3px;"></div>
-                </div>
-              </div>
-            </td>
-          </tr>`;
-          categoryBody.insertAdjacentHTML("beforeend", row);
-        });
-
+        // Update UI
+        updateTotalsUI();
+        renderCharts();
+        renderCategoryBreakdown();
+        
+        // Show the app content
+        document.getElementById('appContainer').style.display = 'flex';
+        hideLoading();
+        
       } catch (err) {
         console.error("Error loading overview:", err);
+        hideLoading();
+        showError("Failed to load room data. Please try again later.");
       }
+    }
+
+    function showLoading() {
+      document.getElementById('loading').style.display = 'flex';
+      document.getElementById('appContainer').style.display = 'none';
+    }
+
+    function hideLoading() {
+      document.getElementById('loading').style.display = 'none';
+    }
+
+    function showError(message) {
+      hideLoading();
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'error-message';
+      errorDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+      document.body.appendChild(errorDiv);
+    }
+
+    function updateRoomInfo(room) {
+      document.getElementById("roomNameBadge").innerHTML = `
+        <i class="fas fa-door-closed"></i>
+        <span>${room.roomName || 'Unnamed Room'}</span>
+      `;
+      document.getElementById("roomCodeBadge").innerHTML = `
+        <i class="fas fa-key"></i>
+        <span>Code: ${room.roomCode || 'N/A'}</span>
+      `;
+    }
+
+    async function checkAdminRole(roomCode, userId) {
+      try {
+        const memberQuery = Backendless.DataQueryBuilder.create()
+          .setWhereClause(`roomCode = '${roomCode}' AND userId = '${userId}'`);
+        const members = await Backendless.Data.of("Members").find(memberQuery);
+        return members.length && members[0].role === "admin";
+      } catch (err) {
+        console.error("Error checking admin role:", err);
+        return false;
+      }
+    }
+
+    function renderSidebar(roomId, isAdmin) {
+      document.querySelector(".sidebar-nav").innerHTML = `
+        <a href="room_dashboard.html?roomId=${roomId}"><i class="fas fa-tachometer-alt"></i> <span>Dashboard</span></a>
+        ${isAdmin ? `<a href="add_money.html?roomId=${roomId}"><i class="fas fa-plus-circle"></i> <span>Add Money</span></a>` : ''}
+        ${isAdmin ? `<a href="spent_money.html?roomId=${roomId}"><i class="fas fa-minus-circle"></i> <span>Spent Money</span></a>` : ''}
+        <a href="transactions.html?roomId=${roomId}"><i class="fas fa-exchange-alt"></i> <span>Transactions</span></a>
+        <a href="overview.html?roomId=${roomId}" class="active"><i class="fas fa-chart-pie"></i> <span>Overview</span></a>
+        <a href="download_pdf.html?roomId=${roomId}"><i class="fas fa-file-pdf"></i> <span>Download PDF</span></a>
+      `;
     }
 
     async function calculateTotals(roomCode) {
@@ -220,6 +205,8 @@
         // First get the count of all transactions
         const count = await Backendless.Data.of("Transactions").getObjectCount(queryBuilder);
         
+        if (count === 0) return; // No transactions to calculate
+        
         // Set page size to maximum (100 is Backendless max)
         queryBuilder.setPageSize(100);
         
@@ -232,21 +219,29 @@
           const transactions = await Backendless.Data.of("Transactions").find(queryBuilder);
           
           transactions.forEach(t => {
+            if (!t.type || !t.amount) return; // Skip invalid transactions
+            
             if (t.type === "add") {
-              calculatedTotals.totalAdded += t.amount;
+              calculatedTotals.totalAdded += parseFloat(t.amount) || 0;
             } else if (t.type === "spent") {
-              calculatedTotals.totalSpent += t.amount;
-              calculatedTotals.spentCategories[t.category] = 
-                (calculatedTotals.spentCategories[t.category] || 0) + t.amount;
+              calculatedTotals.totalSpent += parseFloat(t.amount) || 0;
+              
+              // Handle category
+              const category = t.category || 'Uncategorized';
+              calculatedTotals.spentCategories[category] = 
+                (calculatedTotals.spentCategories[category] || 0) + (parseFloat(t.amount) || 0);
 
-              const month = new Date(t.created).toLocaleString('default', { month: 'short', year: 'numeric' });
+              // Handle monthly data
+              const date = t.created ? new Date(t.created) : new Date();
+              const month = date.toLocaleString('default', { month: 'short', year: 'numeric' });
               calculatedTotals.monthlyData[month] = 
-                (calculatedTotals.monthlyData[month] || 0) + t.amount;
+                (calculatedTotals.monthlyData[month] || 0) + (parseFloat(t.amount) || 0);
             }
           });
         }
       } catch (err) {
         console.error("Error calculating totals:", err);
+        throw err;
       }
     }
 
@@ -258,31 +253,146 @@
           .setPageSize(transactionsPerPage);
         
         const result = await Backendless.Data.of("Transactions").find(query);
-        allTransactions = result.data;
-        totalTransactions = result.totalObjects;
-        totalPages = Math.ceil(totalTransactions / transactionsPerPage);
+        allTransactions = result.data || [];
+        totalTransactions = result.totalObjects || 0;
+        totalPages = Math.max(1, Math.ceil(totalTransactions / transactionsPerPage));
         
-        // Update pagination controls
         updatePaginationControls();
       } catch (err) {
         console.error("Error loading transactions for display:", err);
+        allTransactions = [];
+        totalTransactions = 0;
+        totalPages = 1;
+        throw err;
       }
     }
 
-    async function loadMoreTransactions(page) {
-      try {
-        const query = Backendless.DataQueryBuilder.create()
-          .setWhereClause(`roomCode = '${allTransactions[0].roomCode}'`)
-          .setSortBy(["created desc"])
-          .setPageSize(transactionsPerPage)
-          .setOffset((page - 1) * transactionsPerPage);
-        
-        const result = await Backendless.Data.of("Transactions").find(query);
-        allTransactions = result.data;
-        displayTransactions(page);
-      } catch (err) {
-        console.error("Error loading more transactions:", err);
-      }
+    function updateTotalsUI() {
+      const balance = calculatedTotals.totalAdded - calculatedTotals.totalSpent;
+      document.getElementById("totalAdded").textContent = "₹" + calculatedTotals.totalAdded.toFixed(2);
+      document.getElementById("totalSpent").textContent = "₹" + calculatedTotals.totalSpent.toFixed(2);
+      document.getElementById("balance").textContent = "₹" + balance.toFixed(2);
+    }
+
+    function renderCharts() {
+      // Destroy existing charts if they exist
+      if (window.pieChart) window.pieChart.destroy();
+      if (window.barChart) window.barChart.destroy();
+
+      // Create Pie Chart (Spending by Category)
+      const pieCtx = document.getElementById("pieChart").getContext("2d");
+      window.pieChart = new Chart(pieCtx, {
+        type: "doughnut",
+        data: {
+          labels: Object.keys(calculatedTotals.spentCategories),
+          datasets: [{
+            data: Object.values(calculatedTotals.spentCategories),
+            backgroundColor: [
+              "#ef4444", "#f97316", "#eab308", "#10b981",
+              "#3b82f6", "#8b5cf6", "#ec4899", "#14b8a6",
+              "#f43f5e", "#84cc16", "#0ea5e9"
+            ],
+            borderWidth: 0,
+            borderRadius: 6
+          }]
+        },
+        options: {
+          cutout: '70%',
+          plugins: {
+            legend: {
+              position: 'right',
+              labels: {
+                color: "#fff",
+                padding: 20,
+                usePointStyle: true,
+                pointStyle: 'circle'
+              }
+            },
+            tooltip: {
+              backgroundColor: 'rgba(0,0,0,0.8)',
+              titleFont: { size: 14, weight: 'bold' },
+              bodyFont: { size: 12 },
+              padding: 12,
+              cornerRadius: 8,
+              displayColors: true,
+              usePointStyle: true,
+              callbacks: {
+                label: function(context) {
+                  const label = context.label || '';
+                  const value = context.raw || 0;
+                  const percentage = calculatedTotals.totalSpent > 0 
+                    ? Math.round((value / calculatedTotals.totalSpent) * 100) 
+                    : 0;
+                  return `${label}: ₹${value.toFixed(2)} (${percentage}%)`;
+                }
+              }
+            }
+          }
+        }
+      });
+
+      // Create Bar Chart (Monthly Spending Trend)
+      const barCtx = document.getElementById("barChart").getContext("2d");
+      window.barChart = new Chart(barCtx, {
+        type: "bar",
+        data: {
+          labels: Object.keys(calculatedTotals.monthlyData),
+          datasets: [{
+            label: "Monthly Spend (₹)",
+            data: Object.values(calculatedTotals.monthlyData),
+            backgroundColor: "#3b82f6",
+            borderRadius: 6,
+            borderSkipped: false
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { color: "#94a3b8" }
+            },
+            y: {
+              grid: { color: "rgba(255,255,255,0.1)" },
+              ticks: { color: "#94a3b8" }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: 'rgba(0,0,0,0.8)',
+              titleFont: { size: 14, weight: 'bold' },
+              bodyFont: { size: 12 },
+              padding: 12,
+              cornerRadius: 8
+            }
+          }
+        }
+      });
+    }
+
+    function renderCategoryBreakdown() {
+      const categoryBody = document.querySelector("#categoryTable tbody");
+      categoryBody.innerHTML = '';
+      
+      Object.entries(calculatedTotals.spentCategories).forEach(([cat, amt]) => {
+        const percentage = calculatedTotals.totalSpent > 0 
+          ? Math.round((amt / calculatedTotals.totalSpent) * 100) 
+          : 0;
+        const row = `<tr>
+          <td>${cat}</td>
+          <td><strong>₹${amt.toFixed(2)}</strong></td>
+          <td>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span>${percentage}%</span>
+              <div style="flex: 1; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px;">
+                <div style="width: ${percentage}%; height: 100%; background: var(--primary); border-radius: 3px;"></div>
+              </div>
+            </div>
+          </td>
+        </tr>`;
+        categoryBody.insertAdjacentHTML("beforeend", row);
+      });
     }
 
     function displayTransactions(page) {
@@ -290,7 +400,7 @@
       transactionsBody.innerHTML = '';
       
       allTransactions.forEach(t => {
-        const date = new Date(t.created).toLocaleDateString();
+        const date = t.created ? new Date(t.created).toLocaleDateString() : 'Unknown date';
         const typeBadge = t.type === "add"
           ? '<span class="badge badge-add"><i class="fas fa-plus-circle"></i> Add</span>'
           : '<span class="badge badge-spent"><i class="fas fa-minus-circle"></i> Spent</span>';
@@ -299,11 +409,13 @@
           ? `Added via ${t.paidType || 'unknown'}`
           : `Spent on ${t.category || 'unknown'}`;
 
+        const amount = parseFloat(t.amount) || 0;
+        
         const row = `<tr>
           <td>${date}</td>
           <td>${typeBadge}</td>
           <td>${description}</td>
-          <td><strong>₹${t.amount.toFixed(2)}</strong></td>
+          <td><strong>₹${amount.toFixed(2)}</strong></td>
         </tr>`;
         transactionsBody.insertAdjacentHTML("beforeend", row);
       });
@@ -333,6 +445,26 @@
         updatePaginationControls();
       }
     });
+
+    async function loadMoreTransactions(page) {
+      try {
+        showLoading();
+        const query = Backendless.DataQueryBuilder.create()
+          .setWhereClause(`roomCode = '${allTransactions[0].roomCode}'`)
+          .setSortBy(["created desc"])
+          .setPageSize(transactionsPerPage)
+          .setOffset((page - 1) * transactionsPerPage);
+        
+        const result = await Backendless.Data.of("Transactions").find(query);
+        allTransactions = result.data || [];
+        displayTransactions(page);
+        hideLoading();
+      } catch (err) {
+        console.error("Error loading more transactions:", err);
+        hideLoading();
+        showError("Failed to load more transactions. Please try again.");
+      }
+    }
 
     window.onload = loadOverview;
   </script>

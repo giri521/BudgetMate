@@ -329,100 +329,238 @@
         </div>
       </div>
     </div>
-  </div>
+  </div><script>
+  // Initialize Backendless
+  Backendless.initApp({
+    appId: "3E6C2C39-6779-4034-B008-C3043326DE7A",
+    apiKey: "ACFC4906-9EF5-4356-9F9D-42B8D7397E0B"
+  });
 
-  <script>
-    // Filter transactions by date range with pagination
-async function filterTransactions() {
-  try {
-    const fromDateInput = document.getElementById('fromDate');
-    const toDateInput = document.getElementById('toDate');
+  // Global variables
+  let roomCode = null;
+  let currentTransactions = [];
 
-    if (!fromDateInput.value || !toDateInput.value) {
-      alert('Please select both start and end dates');
-      return;
+  // Set default dates (last 30 days)
+  function setDefaultDates() {
+    const today = new Date();
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(today.getDate() - 30);
+
+    document.getElementById('toDate').valueAsDate = today;
+    document.getElementById('fromDate').valueAsDate = thirtyDaysAgo;
+  }
+
+  function formatDate(timestamp) {
+    const date = new Date(timestamp);
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+  }
+
+  // ✅ Fetch all transactions using pagination
+  async function getAllTransactions(query) {
+    let allResults = [];
+    let pageOffset = 0;
+    const pageSize = 1000;
+
+    while (true) {
+      query.setPageSize(pageSize).setOffset(pageOffset);
+      const page = await Backendless.Data.of("Transactions").find(query);
+      allResults = allResults.concat(page);
+      if (page.length < pageSize) break; // last page
+      pageOffset += pageSize;
     }
 
-    const fromDate = new Date(fromDateInput.value).getTime();
-    const toDate = new Date(toDateInput.value).getTime() + 86400000; // include full day
+    return allResults;
+  }
 
-    if (fromDate > toDate) {
-      alert('End date must be after start date');
-      return;
-    }
+  // Filter transactions by date range
+  async function filterTransactions() {
+    try {
+      const fromDateInput = document.getElementById('fromDate');
+      const toDateInput = document.getElementById('toDate');
 
-    // Show loading state
-    document.querySelectorAll('#addTable tbody, #spentTable tbody').forEach(tbody => {
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="4" class="empty-state">
-            <span class="loading"></span>
-            Loading transactions...
-          </td>
-        </tr>
-      `;
-    });
+      if (!fromDateInput.value || !toDateInput.value) {
+        alert('Please select both start and end dates');
+        return;
+      }
 
-    const user = await Backendless.UserService.getCurrentUser();
-    if (!user) {
-      window.location.href = "index.html";
-      return;
-    }
+      const fromDate = new Date(fromDateInput.value).getTime();
+      const toDate = new Date(toDateInput.value).getTime() + 86400000;
 
-    const roomId = new URLSearchParams(window.location.search).get('roomId');
-    if (!roomId) {
-      window.location.href = "room_dashboard.html";
-      return;
-    }
+      if (fromDate > toDate) {
+        alert('End date must be after start date');
+        return;
+      }
 
-    const room = await Backendless.Data.of("Rooms").findById(roomId);
-    if (!room) {
-      alert('Room not found');
-      return;
-    }
+      // Show loading state
+      document.querySelectorAll('#addTable tbody, #spentTable tbody').forEach(tbody => {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="4" class="empty-state">
+              <span class="loading"></span>
+              Loading transactions...
+            </td>
+          </tr>
+        `;
+      });
 
-    roomCode = room.roomCode;
+      const user = await Backendless.UserService.getCurrentUser();
+      if (!user) {
+        window.location.href = "index.html";
+        return;
+      }
 
-    const allTransactions = [];
-    const pageSize = 100;
-    let offset = 0;
-    let hasMore = true;
+      const roomId = new URLSearchParams(window.location.search).get('roomId');
+      if (!roomId) {
+        window.location.href = "room_dashboard.html";
+        return;
+      }
 
-    while (hasMore) {
+      const room = await Backendless.Data.of("Rooms").findById(roomId);
+      if (!room) {
+        alert('Room not found');
+        return;
+      }
+
+      roomCode = room.roomCode;
+
       const query = Backendless.DataQueryBuilder.create()
         .setWhereClause(`roomCode = '${roomCode}' AND created >= ${fromDate} AND created <= ${toDate}`)
-        .setSortBy(["created DESC"])
-        .setPageSize(pageSize)
-        .setOffset(offset);
+        .setSortBy(["created DESC"]);
 
-      const batch = await Backendless.Data.of("Transactions").find(query);
-      allTransactions.push(...batch);
+      // ✅ Use pagination to get all transactions
+      currentTransactions = await getAllTransactions(query);
 
-      if (batch.length < pageSize) {
-        hasMore = false;
-      } else {
-        offset += pageSize;
-      }
+      renderTransactions(currentTransactions);
+
+    } catch (error) {
+      console.error('Error filtering transactions:', error);
+      document.querySelectorAll('#addTable tbody, #spentTable tbody').forEach(tbody => {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="4" class="empty-state" style="color: var(--danger)">
+              <i class="fas fa-exclamation-circle"></i>
+              Failed to load transactions
+            </td>
+          </tr>
+        `;
+      });
     }
+  }
 
-    currentTransactions = allTransactions;
-    renderTransactions(currentTransactions);
+  function renderTransactions(transactions) {
+    const addTableBody = document.querySelector('#addTable tbody');
+    const spentTableBody = document.querySelector('#spentTable tbody');
 
-  } catch (error) {
-    console.error('Error filtering transactions:', error);
-    document.querySelectorAll('#addTable tbody, #spentTable tbody').forEach(tbody => {
-      tbody.innerHTML = `
+    addTableBody.innerHTML = '';
+    spentTableBody.innerHTML = '';
+
+    if (transactions.length === 0) {
+      addTableBody.innerHTML = `
         <tr>
-          <td colspan="4" class="empty-state" style="color: var(--danger)">
-            <i class="fas fa-exclamation-circle"></i>
-            Failed to load transactions
+          <td colspan="4" class="empty-state">
+            <i class="fas fa-inbox"></i>
+            No transactions found in this date range
           </td>
         </tr>
       `;
+      spentTableBody.innerHTML = `
+        <tr>
+          <td colspan="4" class="empty-state">
+            <i class="fas fa-inbox"></i>
+            No transactions found in this date range
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    transactions.forEach(transaction => {
+      const row = `
+        <tr>
+          <td>${transaction.userName || '-'}</td>
+          <td>₹${transaction.amount.toFixed(2)}</td>
+          <td>${transaction.type === 'add' ? (transaction.paidType || '-') : (transaction.category || '-')}</td>
+          <td>${formatDate(transaction.created)}</td>
+        </tr>
+      `;
+
+      if (transaction.type === 'add') {
+        addTableBody.insertAdjacentHTML('beforeend', row);
+      } else if (transaction.type === 'spent') {
+        spentTableBody.insertAdjacentHTML('beforeend', row);
+      }
     });
   }
-}
 
-  </script>
+  // Generate and download PDF
+  async function downloadPDF() {
+    if (currentTransactions.length === 0) {
+      alert('No transactions to download. Please filter transactions first.');
+      return;
+    }
+
+    try {
+      const element = document.getElementById('pdf-content');
+      const { jsPDF } = window.jspdf;
+
+      const originalButtonText = document.querySelector('.btn-success').innerHTML;
+      document.querySelector('.btn-success').innerHTML = `
+        <span class="loading"></span>
+        Generating PDF...
+      `;
+      document.querySelector('.btn-success').disabled = true;
+
+      const pdf = new jsPDF('landscape', 'pt', 'a4');
+      const fromDate = document.getElementById('fromDate').value;
+      const toDate = document.getElementById('toDate').value;
+
+      pdf.setFontSize(16);
+      pdf.setTextColor(59, 130, 246);
+      pdf.text('Room Transactions Report', 40, 40);
+
+      pdf.setFontSize(12);
+      pdf.setTextColor(0, 0, 0);
+      pdf.text(`Date Range: ${new Date(fromDate).toLocaleDateString()} to ${new Date(toDate).toLocaleDateString()}`, 40, 60);
+
+      const canvas = await html2canvas(element, {
+        backgroundColor: '#1e293b',
+        scale: 1.5,
+        logging: false,
+        useCORS: true
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdfWidth = pdf.internal.pageSize.getWidth() - 80;
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+      pdf.addImage(imgData, 'PNG', 40, 80, pdfWidth, pdfHeight);
+
+      const date = new Date().toLocaleString();
+      pdf.setFontSize(10);
+      pdf.setTextColor(100, 100, 100);
+      pdf.text(`Generated on ${date}`, pdf.internal.pageSize.getWidth() - 100, pdf.internal.pageSize.getHeight() - 20);
+
+      pdf.save(`Room_Transactions_${fromDate}_to_${toDate}.pdf`);
+
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Failed to generate PDF. Please try again.');
+    } finally {
+      document.querySelector('.btn-success').innerHTML = 'Download PDF';
+      document.querySelector('.btn-success').disabled = false;
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    setDefaultDates();
+    document.getElementById('fromDate').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') filterTransactions();
+    });
+    document.getElementById('toDate').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') filterTransactions();
+    });
+  });
+</script>
+
 </body>
 </html>

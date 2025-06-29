@@ -651,31 +651,65 @@
       `;
 
       // Load all transactions
-      const query = Backendless.DataQueryBuilder.create()
-        .setWhereClause(`roomCode = '${room.roomCode}'`)
-        .setSortBy(["created desc"]);
-      const transactions = await Backendless.Data.of("Transactions").find(query);
+const query = Backendless.DataQueryBuilder.create()
+  .setWhereClause(`roomCode = '${room.roomCode}'`)
+  .setSortBy(["created desc"])
+  .setPageSize(1000); // Ensure all transactions are loaded
 
-      let totalAdded = 0, totalSpent = 0;
-      let spentCategories = {}, monthlyData = {}, recent = [];
+const transactions = await Backendless.Data.of("Transactions").find(query);
 
-      transactions.forEach((t) => {
-        if (t.type === "add") {
-          totalAdded += t.amount;
-        } else if (t.type === "spent") {
-          totalSpent += t.amount;
-          spentCategories[t.category] = (spentCategories[t.category] || 0) + t.amount;
+// Initialize counters and data
+let totalAdded = 0,
+    totalSpent = 0;
+let spentCategories = {},
+    monthlyData = {},
+    recent = [];
 
-          const month = new Date(t.created).toLocaleString('default', { month: 'short', year: 'numeric' });
-          monthlyData[month] = (monthlyData[month] || 0) + t.amount;
-        }
-        recent.push(t); // Push all transactions
-      });
+// Process each transaction
+transactions.forEach((t) => {
+  if (t.type === "add") {
+    totalAdded += t.amount;
+  } else if (t.type === "spent") {
+    totalSpent += t.amount;
+    spentCategories[t.category] = (spentCategories[t.category] || 0) + t.amount;
 
-      const balance = totalAdded - totalSpent;
-      document.getElementById("totalAdded").textContent = "₹" + totalAdded.toFixed(2);
-      document.getElementById("totalSpent").textContent = "₹" + totalSpent.toFixed(2);
-      document.getElementById("balance").textContent = "₹" + balance.toFixed(2);
+    const month = new Date(t.created).toLocaleString('default', { month: 'short', year: 'numeric' });
+    monthlyData[month] = (monthlyData[month] || 0) + t.amount;
+  }
+  recent.push(t); // Push all transactions
+});
+
+// Update dashboard amounts
+const balance = totalAdded - totalSpent;
+document.getElementById("totalAdded").textContent = "₹" + totalAdded.toFixed(2);
+document.getElementById("totalSpent").textContent = "₹" + totalSpent.toFixed(2);
+document.getElementById("balance").textContent = "₹" + balance.toFixed(2);
+
+// Render Recent Transactions (sorted by latest)
+recent.sort((a, b) => new Date(b.created) - new Date(a.created));
+const recentBody = document.querySelector("#recentTable tbody");
+recentBody.innerHTML = ""; // Clear any previous rows
+
+recent.forEach(t => {
+  const date = new Date(t.created).toLocaleString();
+  const typeBadge = t.type === "add"
+    ? '<span class="badge badge-add"><i class="fas fa-plus-circle"></i> Add</span>'
+    : '<span class="badge badge-spent"><i class="fas fa-minus-circle"></i> Spent</span>';
+
+  const description = t.description || (
+    t.type === "add"
+      ? `Added via ${t.paidType || 'unknown'}`
+      : `Spent on ${t.category || 'unknown'}`
+  );
+
+  const row = `<tr>
+    <td>${date}</td>
+    <td>${typeBadge}</td>
+    <td>${description}</td>
+    <td><strong>₹${t.amount.toFixed(2)}</strong></td>
+  </tr>`;
+  recentBody.insertAdjacentHTML("beforeend", row);
+});
 
       // Pie chart
       const pieCtx = document.getElementById("pieChart").getContext("2d");

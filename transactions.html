@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -101,10 +102,16 @@
       font-size: 0.9rem;
     }
 
+    .split-container {
+      display: flex;
+      gap: 20px;
+    }
+
     .card {
       background: var(--card-bg);
       padding: 20px;
       border-radius: 10px;
+      flex: 1;
       overflow-x: auto;
     }
 
@@ -118,7 +125,7 @@
       width: 100%;
       border-collapse: collapse;
       margin-top: 10px;
-      min-width: 800px;
+      min-width: 500px;
     }
 
     th, td {
@@ -146,25 +153,13 @@
       cursor: pointer;
     }
 
-    .transaction-type {
-      display: inline-block;
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 0.8rem;
-      font-weight: 600;
-    }
-
-    .type-add {
-      background: rgba(16, 185, 129, 0.2);
-      color: var(--success);
-    }
-
-    .type-spent {
-      background: rgba(239, 68, 68, 0.2);
-      color: var(--danger);
-    }
-
     /* Responsive styles */
+    @media (max-width: 1024px) {
+      .split-container {
+        flex-direction: column;
+      }
+    }
+
     @media (max-width: 768px) {
       .sidebar {
         transform: translateX(-100%);
@@ -186,7 +181,7 @@
       }
       
       table {
-        min-width: 600px;
+        min-width: 300px;
       }
       
       th, td {
@@ -217,7 +212,7 @@
     </div>
     <a href="#" id="dashboardLink"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
     <div id="adminLinks"></div>
-    <a href="#" id="overviewLink"><i class="fas fa-chart-pie"></i> Overview</a>
+<a href="#" id="overviewLink"><i class="fas fa-chart-pie"></i> Overview</a>
     <a href="#" class="active"><i class="fas fa-exchange-alt"></i> Transactions</a>
     <a href="#" id="downloadLink"><i class="fas fa-file-pdf"></i> Download PDF</a>
   </div>
@@ -227,31 +222,41 @@
     <div class="header">
       <div style="display: flex; align-items: center; gap: 15px;">
         <button class="menu-toggle" id="openSidebar"><i class="fas fa-bars"></i></button>
-        <h2><i class="fas fa-exchange-alt"></i> All Transactions</h2>
+        <h2><i class="fas fa-exchange-alt"></i> Room Transactions</h2>
       </div>
       <button id="resetBtn" style="display: none;">Reset All</button>
     </div>
 
-    <div class="card">
-      <h3><i class="fas fa-list"></i> Transaction History</h3>
-      <div style="overflow-x: auto;">
-        <table id="transactionsTable">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Type</th>
-              <th>User</th>
-              <th>Amount</th>
-              <th>Details</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
+    <div class="split-container">
+      <div class="card">
+        <h3><i class="fas fa-plus-circle"></i> Add Money</h3>
+        <div style="overflow-x: auto;">
+          <table id="addTable">
+            <thead>
+              <tr>
+                <th>Name</th><th>Amount</th><th>Payment</th><th>Date</th><th>Action</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3><i class="fas fa-minus-circle"></i> Spent Money</h3>
+        <div style="overflow-x: auto;">
+          <table id="spentTable">
+            <thead>
+              <tr>
+                <th>Name</th><th>Amount</th><th>Each Pays</th><th>For</th><th>Date</th><th>Action</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
-
   <script>
   Backendless.initApp({
     appId: "3E6C2C39-6779-4034-B008-C3043326DE7A",
@@ -377,5 +382,6 @@
   });
 </script>
 
+
 </body>
-</html>
+</html>  

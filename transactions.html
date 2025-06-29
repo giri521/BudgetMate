@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -322,6 +322,7 @@
       const query = Backendless.DataQueryBuilder.create()
         .setWhereClause(`roomCode = '${roomCode}'`)
         .setSortBy(["timestamp DESC"]);
+       .setPageSize(1000); // Ensures all transactions are fetched
 
       const transactions = await Backendless.Data.of("Transactions").find(query);
       const addTable = document.querySelector("#addTable tbody");

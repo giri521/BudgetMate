@@ -650,18 +650,16 @@
         <a href="download_pdf.html?roomId=${roomId}"><i class="fas fa-file-pdf"></i> <span>Download PDF</span></a>
       `;
 
-      // Load ALL transactions with a larger page size
+      // Load all transactions
       const query = Backendless.DataQueryBuilder.create()
         .setWhereClause(`roomCode = '${room.roomCode}'`)
-        .setSortBy(["created desc"])
-        .setPageSize(1000); // ✅ Important: Load more than the default 10
-
+        .setSortBy(["created desc"]);
       const transactions = await Backendless.Data.of("Transactions").find(query);
 
       let totalAdded = 0, totalSpent = 0;
       let spentCategories = {}, monthlyData = {}, recent = [];
 
-      transactions.forEach((t, index) => {
+      transactions.forEach((t) => {
         if (t.type === "add") {
           totalAdded += t.amount;
         } else if (t.type === "spent") {
@@ -671,8 +669,7 @@
           const month = new Date(t.created).toLocaleString('default', { month: 'short', year: 'numeric' });
           monthlyData[month] = (monthlyData[month] || 0) + t.amount;
         }
-
-        if (recent.length < 5) recent.push(t);
+        recent.push(t); // Push all transactions
       });
 
       const balance = totalAdded - totalSpent;
@@ -680,7 +677,7 @@
       document.getElementById("totalSpent").textContent = "₹" + totalSpent.toFixed(2);
       document.getElementById("balance").textContent = "₹" + balance.toFixed(2);
 
-      // Pie Chart (Spending by Category)
+      // Pie chart
       const pieCtx = document.getElementById("pieChart").getContext("2d");
       new Chart(pieCtx, {
         type: "doughnut",
@@ -711,12 +708,6 @@
             },
             tooltip: {
               backgroundColor: 'rgba(0,0,0,0.8)',
-              titleFont: { size: 14, weight: 'bold' },
-              bodyFont: { size: 12 },
-              padding: 12,
-              cornerRadius: 8,
-              displayColors: true,
-              usePointStyle: true,
               callbacks: {
                 label: function(context) {
                   const label = context.label || '';
@@ -730,7 +721,7 @@
         }
       });
 
-      // Bar Chart (Monthly Spending Trend)
+      // Bar chart
       const barCtx = document.getElementById("barChart").getContext("2d");
       new Chart(barCtx, {
         type: "bar",
@@ -759,17 +750,13 @@
           plugins: {
             legend: { display: false },
             tooltip: {
-              backgroundColor: 'rgba(0,0,0,0.8)',
-              titleFont: { size: 14, weight: 'bold' },
-              bodyFont: { size: 12 },
-              padding: 12,
-              cornerRadius: 8
+              backgroundColor: 'rgba(0,0,0,0.8)'
             }
           }
         }
       });
 
-      // Category Breakdown Table
+      // Category Table
       const categoryBody = document.querySelector("#categoryTable tbody");
       Object.entries(spentCategories).forEach(([cat, amt]) => {
         const percentage = totalSpent > 0 ? Math.round((amt / totalSpent) * 100) : 0;
@@ -788,7 +775,7 @@
         categoryBody.insertAdjacentHTML("beforeend", row);
       });
 
-      // Recent Transactions Table (latest 5 from full list)
+      // Recent Transactions Table
       const recentBody = document.querySelector("#recentTable tbody");
       recent.forEach(t => {
         const date = new Date(t.created).toLocaleDateString();
@@ -796,9 +783,9 @@
           ? '<span class="badge badge-add"><i class="fas fa-plus-circle"></i> Add</span>'
           : '<span class="badge badge-spent"><i class="fas fa-minus-circle"></i> Spent</span>';
 
-        const description = t.type === "add" 
+        const description = t.type === "add"
           ? `Added via ${t.paidType || 'unknown'}`
-          : `Spent on ${t.category || 'unknown'}`;
+          : `${t.description || 'Spent on ' + t.category}`;
 
         const row = `<tr>
           <td>${date}</td>

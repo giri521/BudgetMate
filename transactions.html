@@ -267,21 +267,15 @@
   let roomCode = "";
   let isAdmin = false;
 
-  // Sidebar toggle functionality
+  // Sidebar toggle
   function setupSidebar() {
     const sidebar = document.getElementById('sidebar');
     const openBtn = document.getElementById('openSidebar');
     const closeBtn = document.getElementById('closeSidebar');
-    
-    openBtn.addEventListener('click', () => {
-      sidebar.classList.add('active');
-    });
-    
-    closeBtn.addEventListener('click', () => {
-      sidebar.classList.remove('active');
-    });
-    
-    // Close sidebar when clicking outside
+
+    openBtn.addEventListener('click', () => sidebar.classList.add('active'));
+    closeBtn.addEventListener('click', () => sidebar.classList.remove('active'));
+
     document.addEventListener('click', (e) => {
       if (!sidebar.contains(e.target) && e.target !== openBtn) {
         sidebar.classList.remove('active');
@@ -303,12 +297,10 @@
     const currentMember = members[0];
     isAdmin = currentMember?.role === "admin";
 
-    // Set links
     document.getElementById("overviewLink").href = `overview.html?roomId=${roomId}`;
     document.getElementById("dashboardLink").href = `room_dashboard.html?roomId=${roomId}`;
     document.getElementById("downloadLink").href = `download_pdf.html?roomId=${roomId}`;
 
-    // Show admin links
     if (isAdmin) {
       document.getElementById("adminLinks").innerHTML = `
         <a href="add_money.html?roomId=${roomId}"><i class="fas fa-plus-circle"></i> Add Money</a>
@@ -317,20 +309,30 @@
       document.getElementById("resetBtn").style.display = "inline-block";
     }
 
-    // ✅ Fix: Fetch up to 1000 transactions
-    const query = Backendless.DataQueryBuilder.create()
-      .setWhereClause(`roomCode = '${roomCode}'`)
-      .setSortBy(["timestamp DESC"])
-      .setPageSize(1000); // Ensures all transactions load
-
-    const transactions = await Backendless.Data.of("Transactions").find(query);
     const addTable = document.querySelector("#addTable tbody");
     const spentTable = document.querySelector("#spentTable tbody");
-
     addTable.innerHTML = "";
     spentTable.innerHTML = "";
 
-    transactions.forEach(t => {
+    let allTransactions = [];
+    let pageSize = 100;
+    let offset = 0;
+
+    while (true) {
+      const query = Backendless.DataQueryBuilder.create()
+        .setWhereClause(`roomCode = '${roomCode}'`)
+        .setSortBy(["timestamp DESC"])
+        .setPageSize(pageSize)
+        .setOffset(offset);
+
+      const page = await Backendless.Data.of("Transactions").find(query);
+      if (!page.length) break;
+
+      allTransactions.push(...page);
+      offset += pageSize;
+    }
+
+    allTransactions.forEach(t => {
       const date = new Date(t.timestamp).toLocaleString();
       const delBtn = isAdmin
         ? `<button class="btn-delete" onclick="deleteTransaction('${t.objectId}')" aria-label="Delete transaction"><i class="fas fa-trash"></i></button>`
@@ -376,12 +378,11 @@
   document.getElementById("resetBtn").addEventListener("click", resetAllTransactions);
   window.deleteTransaction = deleteTransaction;
 
-  document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener("DOMContentLoaded", () => {
     setupSidebar();
     loadTransactions();
   });
 </script>
-
 
 </body>
 </html>  

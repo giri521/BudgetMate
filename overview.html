@@ -8,61 +8,593 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    /* Previous CSS remains the same */
-    /* ... */
+    :root {
+      --primary: #3b82f6;
+      --primary-dark: #1e3a8a;
+      --primary-light: #60a5fa;
+      --background: #0f172a;
+      --card-bg: #1e293b;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+    }
     
-    /* Add loading spinner style */
-    .loading-spinner {
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--background);
+      color: var(--text-primary);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+    
+    /* Mobile-first layout */
+    .container {
       display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      width: 100%;
-      position: fixed;
-      top: 0;
-      left: 0;
-      background: rgba(15, 23, 42, 0.8);
-      z-index: 9999;
+      flex-direction: column;
+      min-height: 100vh;
     }
     
-    .spinner {
-      width: 50px;
-      height: 50px;
-      border: 5px solid rgba(59, 130, 246, 0.3);
-      border-radius: 50%;
-      border-top-color: #3b82f6;
-      animation: spin 1s ease-in-out infinite;
+    .sidebar {
+      background: var(--primary-dark);
+      padding: 10px 0;
+      box-shadow: 4px 0 15px rgba(0, 0, 0, 0.1);
+      z-index: 10;
+      order: 2;
     }
     
-    @keyframes spin {
-      to { transform: rotate(360deg); }
+    .sidebar-header {
+      padding: 10px 15px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      margin-bottom: 10px;
+      display: none; /* Hidden by default on mobile */
     }
     
-    .error-message {
-      color: #ef4444;
-      background: rgba(239, 68, 68, 0.1);
-      padding: 15px;
-      border-radius: 8px;
-      margin: 20px;
-      border-left: 4px solid #ef4444;
+    .sidebar-header h3 {
+      color: white;
+      font-size: 1.1rem;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
     }
     
-    .error-message i {
+    .sidebar-header h3 i {
+      color: var(--primary-light);
+    }
+    
+    .sidebar-nav {
+      display: flex;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 0 5px;
+    }
+    
+    .sidebar-nav::-webkit-scrollbar {
+      display: none;
+    }
+    
+    .sidebar a {
+      color: var(--text-primary);
+      text-decoration: none;
+      padding: 12px 15px;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      min-width: 70px;
+      font-size: 0.8rem;
+      border-bottom: 3px solid transparent;
+      opacity: 0.9;
+      white-space: nowrap;
+    }
+    
+    .sidebar a:hover {
+      background: rgba(255, 255, 255, 0.1);
+      opacity: 1;
+      border-bottom: 3px solid var(--primary-light);
+    }
+    
+    .sidebar a i {
       font-size: 1.2rem;
     }
+    
+    .sidebar a.active {
+      background: rgba(255, 255, 255, 0.1);
+      border-bottom: 3px solid var(--primary);
+      opacity: 1;
+    }
+    
+    .sidebar a span {
+      font-size: 0.7rem;
+    }
+    
+    .main {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      order: 1;
+    }
+    
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    
+    h2 {
+      color: var(--primary);
+      font-size: 1.5rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    h2 i {
+      color: var(--primary-light);
+      font-size: 1.3rem;
+    }
+    
+    .room-info {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    
+    .room-info-badge {
+      background: rgba(59, 130, 246, 0.2);
+      color: var(--primary-light);
+      padding: 6px 10px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+    
+    .room-info-badge i {
+      font-size: 0.9rem;
+    }
+    
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    
+    .stat-box {
+      background: var(--card-bg);
+      padding: 15px;
+      border-radius: 10px;
+      text-align: center;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .stat-box:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .stat-box::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: var(--primary);
+    }
+    
+    .stat-box h3 {
+      margin: 0;
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+      font-weight: 500;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    
+    .stat-box h3 i {
+      font-size: 1rem;
+    }
+    
+    .stat-box p {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin: 0;
+    }
+    
+    #totalAdded {
+      color: var(--success);
+    }
+    
+    #totalSpent {
+      color: var(--danger);
+    }
+    
+    #balance {
+      color: var(--primary);
+    }
+    
+    .chart-container {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    
+    .chart-card {
+      background: var(--card-bg);
+      border-radius: 10px;
+      padding: 15px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      transition: transform 0.3s ease;
+    }
+    
+    .chart-card:hover {
+      transform: translateY(-3px);
+    }
+    
+    .chart-card h3 {
+      color: var(--primary-light);
+      font-size: 1.1rem;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .chart-card h3 i {
+      color: var(--primary);
+      font-size: 1.1rem;
+    }
+    
+    canvas {
+      width: 100% !important;
+      height: auto !important;
+      max-height: 300px;
+      background: var(--card-bg);
+      border-radius: 6px;
+      padding: 5px;
+    }
+    
+    .table-container {
+      background: var(--card-bg);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      margin-bottom: 20px;
+      overflow-x: auto;
+    }
+    
+    .table-container h3 {
+      color: var(--primary-light);
+      font-size: 1.1rem;
+      padding: 15px 15px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .table-container h3 i {
+      color: var(--primary);
+      font-size: 1.1rem;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      color: var(--text-primary);
+      min-width: 600px;
+    }
+    
+    th {
+      background: var(--primary);
+      color: white;
+      text-align: left;
+      font-weight: 600;
+      padding: 12px 15px;
+      font-size: 0.85rem;
+    }
+    
+    td {
+      padding: 10px 15px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 0.85rem;
+    }
+    
+    tr:last-child td {
+      border-bottom: none;
+    }
+    
+    tr:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+    
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      gap: 4px;
+    }
+    
+    .badge-add {
+      background: rgba(16, 185, 129, 0.2);
+      color: var(--success);
+    }
+    
+    .badge-spent {
+      background: rgba(239, 68, 68, 0.2);
+      color: var(--danger);
+    }
+    
+    .badge i {
+      font-size: 0.7rem;
+    }
+    
+    /* Desktop layout */
+    @media (min-width: 768px) {
+      .container {
+        flex-direction: row;
+      }
+      
+      .sidebar {
+        width: 260px;
+        padding: 20px 0;
+        order: 1;
+      }
+      
+      .sidebar-header {
+        display: block;
+        padding: 0 20px 20px;
+        margin-bottom: 20px;
+      }
+      
+      .sidebar-nav {
+        display: block;
+        overflow-x: visible;
+        padding: 0;
+      }
+      
+      .sidebar a {
+        flex-direction: row;
+        padding: 12px 25px;
+        min-width: auto;
+        font-size: 1rem;
+        border-left: 3px solid transparent;
+        border-bottom: none;
+        gap: 12px;
+      }
+      
+      .sidebar a:hover {
+        border-left: 3px solid var(--primary-light);
+        border-bottom: none;
+      }
+      
+      .sidebar a.active {
+        border-left: 3px solid var(--primary);
+        border-bottom: none;
+      }
+      
+      .sidebar a span {
+        font-size: inherit;
+      }
+      
+      .main {
+        padding: 30px;
+        order: 2;
+      }
+      
+      .header {
+        margin-bottom: 30px;
+      }
+      
+      h2 {
+        font-size: 1.8rem;
+      }
+      
+      h2 i {
+        font-size: 1.5rem;
+      }
+      
+      .room-info {
+        gap: 15px;
+        margin-bottom: 20px;
+      }
+      
+      .room-info-badge {
+        padding: 6px 12px;
+        font-size: 0.9rem;
+      }
+      
+      .stats {
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+      }
+      
+      .stat-box {
+        padding: 20px;
+        border-radius: 12px;
+      }
+      
+      .stat-box h3 {
+        font-size: 1rem;
+        margin-bottom: 10px;
+      }
+      
+      .stat-box p {
+        font-size: 1.8rem;
+      }
+      
+      .chart-container {
+        grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+      }
+      
+      .chart-card {
+        padding: 20px;
+        border-radius: 12px;
+      }
+      
+      .chart-card h3 {
+        font-size: 1.2rem;
+        margin-bottom: 20px;
+      }
+      
+      canvas {
+        max-height: none;
+        padding: 10px;
+        border-radius: 8px;
+      }
+      
+      .table-container {
+        border-radius: 12px;
+        margin-bottom: 30px;
+      }
+      
+      .table-container h3 {
+        font-size: 1.2rem;
+        padding: 20px 20px 0;
+      }
+      
+      th {
+        padding: 15px 20px;
+        font-size: 1rem;
+      }
+      
+      td {
+        padding: 12px 20px;
+        font-size: 1rem;
+      }
+      
+      .badge {
+        font-size: 0.75rem;
+        padding: 4px 8px;
+      }
+    }
+    
+    /* Large screens */
+    @media (min-width: 1200px) {
+      .main {
+        padding: 40px;
+      }
+    }
+    
+    /* Animations */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .animate {
+      animation: fadeIn 0.4s ease forwards;
+    }
+    
+    .delay-1 { animation-delay: 0.1s; }
+    .delay-2 { animation-delay: 0.2s; }
+    .delay-3 { animation-delay: 0.3s; }
+    .delay-4 { animation-delay: 0.4s; }
   </style>
 </head>
 <body>
-  <div id="loading" class="loading-spinner">
-    <div class="spinner"></div>
-  </div>
+  <div class="container">
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <h3><i class="fas fa-home"></i> <span>BudgetMate</span></h3>
+      </div>
+      <div class="sidebar-nav">
+        <!-- Sidebar links will be populated by JavaScript -->
+      </div>
+    </div>
 
-  <div class="container" id="appContainer" style="display: none;">
-    <!-- Previous HTML content remains the same -->
-    <!-- ... -->
+    <div class="main">
+      <div class="header">
+        <h2><i class="fas fa-chart-pie"></i> Room Overview</h2>
+      </div>
+
+      <div class="room-info">
+        <div class="room-info-badge" id="roomNameBadge">
+          <i class="fas fa-door-closed"></i>
+          <span>Loading room...</span>
+        </div>
+        <div class="room-info-badge" id="roomCodeBadge">
+          <i class="fas fa-key"></i>
+          <span>Code: Loading...</span>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat-box animate delay-1">
+          <h3><i class="fas fa-plus-circle"></i> Total Added</h3>
+          <p id="totalAdded">₹0</p>
+        </div>
+        <div class="stat-box animate delay-2">
+          <h3><i class="fas fa-minus-circle"></i> Total Spent</h3>
+          <p id="totalSpent">₹0</p>
+        </div>
+        <div class="stat-box animate delay-3">
+          <h3><i class="fas fa-wallet"></i> Balance</h3>
+          <p id="balance">₹0</p>
+        </div>
+      </div>
+
+      <div class="chart-container">
+        <div class="chart-card animate delay-1">
+          <h3><i class="fas fa-chart-pie"></i> Spending by Category</h3>
+          <canvas id="pieChart"></canvas>
+        </div>
+        <div class="chart-card animate delay-2">
+          <h3><i class="fas fa-chart-line"></i> Spending Trend</h3>
+          <canvas id="barChart"></canvas>
+        </div>
+      </div>
+
+      <div class="table-container animate delay-3">
+        <h3><i class="fas fa-tags"></i> Category Breakdown</h3>
+        <table id="categoryTable">
+          <thead>
+            <tr><th>Category</th><th>Amount (₹)</th><th>% of Total</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="table-container animate delay-4">
+        <h3><i class="fas fa-history"></i> Recent Transactions</h3>
+        <table id="recentTable">
+          <thead>
+            <tr><th>Date</th><th>Type</th><th>Description</th><th>Amount (₹)</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -71,23 +603,8 @@
       apiKey: "ACFC4906-9EF5-4356-9F9D-42B8D7397E0B"
     });
 
-    // Global variables
-    let currentPage = 1;
-    const transactionsPerPage = 10;
-    let totalTransactions = 0;
-    let totalPages = 1;
-    let allTransactions = [];
-    let calculatedTotals = {
-      totalAdded: 0,
-      totalSpent: 0,
-      spentCategories: {},
-      monthlyData: {}
-    };
-
     async function loadOverview() {
       try {
-        showLoading();
-        
         const params = new URLSearchParams(window.location.search);
         const roomId = params.get("roomId");
         if (!roomId) {
@@ -107,366 +624,196 @@
           return;
         }
 
-        // Update room info
-        updateRoomInfo(room);
+        // Update room info badges
+        document.getElementById("roomNameBadge").innerHTML = `
+          <i class="fas fa-door-closed"></i>
+          <span>${room.roomName}</span>
+        `;
+        document.getElementById("roomCodeBadge").innerHTML = `
+          <i class="fas fa-key"></i>
+          <span>Code: ${room.roomCode}</span>
+        `;
 
         // Check admin role
-        const isAdmin = await checkAdminRole(room.roomCode, currentUser.objectId);
-        renderSidebar(roomId, isAdmin);
-
-        // Calculate totals from ALL transactions
-        await calculateTotals(room.roomCode);
-        
-        // Load transactions for display
-        await loadTransactionsForDisplay(room.roomCode);
-        
-        // Update UI
-        updateTotalsUI();
-        renderCharts();
-        renderCategoryBreakdown();
-        
-        // Show the app content
-        document.getElementById('appContainer').style.display = 'flex';
-        hideLoading();
-        
-      } catch (err) {
-        console.error("Error loading overview:", err);
-        hideLoading();
-        showError("Failed to load room data. Please try again later.");
-      }
-    }
-
-    function showLoading() {
-      document.getElementById('loading').style.display = 'flex';
-      document.getElementById('appContainer').style.display = 'none';
-    }
-
-    function hideLoading() {
-      document.getElementById('loading').style.display = 'none';
-    }
-
-    function showError(message) {
-      hideLoading();
-      const errorDiv = document.createElement('div');
-      errorDiv.className = 'error-message';
-      errorDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
-      document.body.appendChild(errorDiv);
-    }
-
-    function updateRoomInfo(room) {
-      document.getElementById("roomNameBadge").innerHTML = `
-        <i class="fas fa-door-closed"></i>
-        <span>${room.roomName || 'Unnamed Room'}</span>
-      `;
-      document.getElementById("roomCodeBadge").innerHTML = `
-        <i class="fas fa-key"></i>
-        <span>Code: ${room.roomCode || 'N/A'}</span>
-      `;
-    }
-
-    async function checkAdminRole(roomCode, userId) {
-      try {
         const memberQuery = Backendless.DataQueryBuilder.create()
-          .setWhereClause(`roomCode = '${roomCode}' AND userId = '${userId}'`);
+          .setWhereClause(`roomCode = '${room.roomCode}' AND userId = '${currentUser.objectId}'`);
         const members = await Backendless.Data.of("Members").find(memberQuery);
-        return members.length && members[0].role === "admin";
-      } catch (err) {
-        console.error("Error checking admin role:", err);
-        return false;
-      }
-    }
+        const isAdmin = members.length && members[0].role === "admin";
 
-    function renderSidebar(roomId, isAdmin) {
-      document.querySelector(".sidebar-nav").innerHTML = `
-        <a href="room_dashboard.html?roomId=${roomId}"><i class="fas fa-tachometer-alt"></i> <span>Dashboard</span></a>
-        ${isAdmin ? `<a href="add_money.html?roomId=${roomId}"><i class="fas fa-plus-circle"></i> <span>Add Money</span></a>` : ''}
-        ${isAdmin ? `<a href="spent_money.html?roomId=${roomId}"><i class="fas fa-minus-circle"></i> <span>Spent Money</span></a>` : ''}
-        <a href="transactions.html?roomId=${roomId}"><i class="fas fa-exchange-alt"></i> <span>Transactions</span></a>
-        <a href="overview.html?roomId=${roomId}" class="active"><i class="fas fa-chart-pie"></i> <span>Overview</span></a>
-        <a href="download_pdf.html?roomId=${roomId}"><i class="fas fa-file-pdf"></i> <span>Download PDF</span></a>
-      `;
-    }
+        // Render sidebar
+        document.querySelector(".sidebar-nav").innerHTML = `
+          <a href="room_dashboard.html?roomId=${roomId}"><i class="fas fa-tachometer-alt"></i> <span>Dashboard</span></a>
+          ${isAdmin ? `<a href="add_money.html?roomId=${roomId}"><i class="fas fa-plus-circle"></i> <span>Add Money</span></a>` : ''}
+          ${isAdmin ? `<a href="spent_money.html?roomId=${roomId}"><i class="fas fa-minus-circle"></i> <span>Spent Money</span></a>` : ''}
+          <a href="transactions.html?roomId=${roomId}"><i class="fas fa-exchange-alt"></i> <span>Transactions</span></a>
+          <a href="overview.html?roomId=${roomId}" class="active"><i class="fas fa-chart-pie"></i> <span>Overview</span></a>
+          <a href="download_pdf.html?roomId=${roomId}"><i class="fas fa-file-pdf"></i> <span>Download PDF</span></a>
+        `;
 
-    async function calculateTotals(roomCode) {
-      try {
-        // Reset totals
-        calculatedTotals = {
-          totalAdded: 0,
-          totalSpent: 0,
-          spentCategories: {},
-          monthlyData: {}
-        };
-
-        // Query to get all transactions for calculations
-        const queryBuilder = Backendless.DataQueryBuilder.create()
-          .setWhereClause(`roomCode = '${roomCode}'`)
-          .setSortBy(["created desc"]);
-
-        // First get the count of all transactions
-        const count = await Backendless.Data.of("Transactions").getObjectCount(queryBuilder);
-        
-        if (count === 0) return; // No transactions to calculate
-        
-        // Set page size to maximum (100 is Backendless max)
-        queryBuilder.setPageSize(100);
-        
-        // Calculate how many pages we need to load
-        const totalPages = Math.ceil(count / 100);
-        
-        // Load all pages and calculate totals
-        for (let page = 1; page <= totalPages; page++) {
-          queryBuilder.setOffset((page - 1) * 100);
-          const transactions = await Backendless.Data.of("Transactions").find(queryBuilder);
-          
-          transactions.forEach(t => {
-            if (!t.type || !t.amount) return; // Skip invalid transactions
-            
-            if (t.type === "add") {
-              calculatedTotals.totalAdded += parseFloat(t.amount) || 0;
-            } else if (t.type === "spent") {
-              calculatedTotals.totalSpent += parseFloat(t.amount) || 0;
-              
-              // Handle category
-              const category = t.category || 'Uncategorized';
-              calculatedTotals.spentCategories[category] = 
-                (calculatedTotals.spentCategories[category] || 0) + (parseFloat(t.amount) || 0);
-
-              // Handle monthly data
-              const date = t.created ? new Date(t.created) : new Date();
-              const month = date.toLocaleString('default', { month: 'short', year: 'numeric' });
-              calculatedTotals.monthlyData[month] = 
-                (calculatedTotals.monthlyData[month] || 0) + (parseFloat(t.amount) || 0);
-            }
-          });
-        }
-      } catch (err) {
-        console.error("Error calculating totals:", err);
-        throw err;
-      }
-    }
-
-    async function loadTransactionsForDisplay(roomCode) {
-      try {
+        // Load transactions
         const query = Backendless.DataQueryBuilder.create()
-          .setWhereClause(`roomCode = '${roomCode}'`)
-          .setSortBy(["created desc"])
-          .setPageSize(transactionsPerPage);
-        
-        const result = await Backendless.Data.of("Transactions").find(query);
-        allTransactions = result.data || [];
-        totalTransactions = result.totalObjects || 0;
-        totalPages = Math.max(1, Math.ceil(totalTransactions / transactionsPerPage));
-        
-        updatePaginationControls();
-      } catch (err) {
-        console.error("Error loading transactions for display:", err);
-        allTransactions = [];
-        totalTransactions = 0;
-        totalPages = 1;
-        throw err;
-      }
-    }
+          .setWhereClause(`roomCode = '${room.roomCode}'`)
+          .setSortBy(["created desc"]);
+        const transactions = await Backendless.Data.of("Transactions").find(query);
 
-    function updateTotalsUI() {
-      const balance = calculatedTotals.totalAdded - calculatedTotals.totalSpent;
-      document.getElementById("totalAdded").textContent = "₹" + calculatedTotals.totalAdded.toFixed(2);
-      document.getElementById("totalSpent").textContent = "₹" + calculatedTotals.totalSpent.toFixed(2);
-      document.getElementById("balance").textContent = "₹" + balance.toFixed(2);
-    }
+        // Calculate totals and categories
+        let totalAdded = 0, totalSpent = 0;
+        let spentCategories = {}, monthlyData = {}, recent = [];
 
-    function renderCharts() {
-      // Destroy existing charts if they exist
-      if (window.pieChart) window.pieChart.destroy();
-      if (window.barChart) window.barChart.destroy();
+        transactions.forEach((t, index) => {
+          if (t.type === "add") {
+            totalAdded += t.amount;
+          } else if (t.type === "spent") {
+            totalSpent += t.amount;
+            spentCategories[t.category] = (spentCategories[t.category] || 0) + t.amount;
 
-      // Create Pie Chart (Spending by Category)
-      const pieCtx = document.getElementById("pieChart").getContext("2d");
-      window.pieChart = new Chart(pieCtx, {
-        type: "doughnut",
-        data: {
-          labels: Object.keys(calculatedTotals.spentCategories),
-          datasets: [{
-            data: Object.values(calculatedTotals.spentCategories),
-            backgroundColor: [
-              "#ef4444", "#f97316", "#eab308", "#10b981",
-              "#3b82f6", "#8b5cf6", "#ec4899", "#14b8a6",
-              "#f43f5e", "#84cc16", "#0ea5e9"
-            ],
-            borderWidth: 0,
-            borderRadius: 6
-          }]
-        },
-        options: {
-          cutout: '70%',
-          plugins: {
-            legend: {
-              position: 'right',
-              labels: {
-                color: "#fff",
-                padding: 20,
+            const month = new Date(t.created).toLocaleString('default', { month: 'short', year: 'numeric' });
+            monthlyData[month] = (monthlyData[month] || 0) + t.amount;
+          }
+
+          if (index < 5) recent.push(t);
+        });
+
+        const balance = totalAdded - totalSpent;
+        document.getElementById("totalAdded").textContent = "₹" + totalAdded.toFixed(2);
+        document.getElementById("totalSpent").textContent = "₹" + totalSpent.toFixed(2);
+        document.getElementById("balance").textContent = "₹" + balance.toFixed(2);
+
+        // Create Pie Chart (Spending by Category)
+        const pieCtx = document.getElementById("pieChart").getContext("2d");
+        new Chart(pieCtx, {
+          type: "doughnut",
+          data: {
+            labels: Object.keys(spentCategories),
+            datasets: [{
+              data: Object.values(spentCategories),
+              backgroundColor: [
+                "#ef4444", "#f97316", "#eab308", "#10b981",
+                "#3b82f6", "#8b5cf6", "#ec4899", "#14b8a6",
+                "#f43f5e", "#84cc16", "#0ea5e9"
+              ],
+              borderWidth: 0,
+              borderRadius: 6
+            }]
+          },
+          options: {
+            cutout: '70%',
+            plugins: {
+              legend: {
+                position: 'right',
+                labels: {
+                  color: "#fff",
+                  padding: 20,
+                  usePointStyle: true,
+                  pointStyle: 'circle'
+                }
+              },
+              tooltip: {
+                backgroundColor: 'rgba(0,0,0,0.8)',
+                titleFont: { size: 14, weight: 'bold' },
+                bodyFont: { size: 12 },
+                padding: 12,
+                cornerRadius: 8,
+                displayColors: true,
                 usePointStyle: true,
-                pointStyle: 'circle'
-              }
-            },
-            tooltip: {
-              backgroundColor: 'rgba(0,0,0,0.8)',
-              titleFont: { size: 14, weight: 'bold' },
-              bodyFont: { size: 12 },
-              padding: 12,
-              cornerRadius: 8,
-              displayColors: true,
-              usePointStyle: true,
-              callbacks: {
-                label: function(context) {
-                  const label = context.label || '';
-                  const value = context.raw || 0;
-                  const percentage = calculatedTotals.totalSpent > 0 
-                    ? Math.round((value / calculatedTotals.totalSpent) * 100) 
-                    : 0;
-                  return `${label}: ₹${value.toFixed(2)} (${percentage}%)`;
+                callbacks: {
+                  label: function(context) {
+                    const label = context.label || '';
+                    const value = context.raw || 0;
+                    const percentage = Math.round((value / totalSpent) * 100);
+                    return `${label}: ₹${value.toFixed(2)} (${percentage}%)`;
+                  }
                 }
               }
             }
           }
-        }
-      });
+        });
 
-      // Create Bar Chart (Monthly Spending Trend)
-      const barCtx = document.getElementById("barChart").getContext("2d");
-      window.barChart = new Chart(barCtx, {
-        type: "bar",
-        data: {
-          labels: Object.keys(calculatedTotals.monthlyData),
-          datasets: [{
-            label: "Monthly Spend (₹)",
-            data: Object.values(calculatedTotals.monthlyData),
-            backgroundColor: "#3b82f6",
-            borderRadius: 6,
-            borderSkipped: false
-          }]
-        },
-        options: {
-          responsive: true,
-          scales: {
-            x: {
-              grid: { display: false },
-              ticks: { color: "#94a3b8" }
-            },
-            y: {
-              grid: { color: "rgba(255,255,255,0.1)" },
-              ticks: { color: "#94a3b8" }
-            }
+        // Create Bar Chart (Monthly Spending Trend)
+        const barCtx = document.getElementById("barChart").getContext("2d");
+        new Chart(barCtx, {
+          type: "bar",
+          data: {
+            labels: Object.keys(monthlyData),
+            datasets: [{
+              label: "Monthly Spend (₹)",
+              data: Object.values(monthlyData),
+              backgroundColor: "#3b82f6",
+              borderRadius: 6,
+              borderSkipped: false
+            }]
           },
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              backgroundColor: 'rgba(0,0,0,0.8)',
-              titleFont: { size: 14, weight: 'bold' },
-              bodyFont: { size: 12 },
-              padding: 12,
-              cornerRadius: 8
+          options: {
+            responsive: true,
+            scales: {
+              x: {
+                grid: { display: false },
+                ticks: { color: "#94a3b8" }
+              },
+              y: {
+                grid: { color: "rgba(255,255,255,0.1)" },
+                ticks: { color: "#94a3b8" }
+              }
+            },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: 'rgba(0,0,0,0.8)',
+                titleFont: { size: 14, weight: 'bold' },
+                bodyFont: { size: 12 },
+                padding: 12,
+                cornerRadius: 8
+              }
             }
           }
-        }
-      });
-    }
+        });
 
-    function renderCategoryBreakdown() {
-      const categoryBody = document.querySelector("#categoryTable tbody");
-      categoryBody.innerHTML = '';
-      
-      Object.entries(calculatedTotals.spentCategories).forEach(([cat, amt]) => {
-        const percentage = calculatedTotals.totalSpent > 0 
-          ? Math.round((amt / calculatedTotals.totalSpent) * 100) 
-          : 0;
-        const row = `<tr>
-          <td>${cat}</td>
-          <td><strong>₹${amt.toFixed(2)}</strong></td>
-          <td>
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <span>${percentage}%</span>
-              <div style="flex: 1; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px;">
-                <div style="width: ${percentage}%; height: 100%; background: var(--primary); border-radius: 3px;"></div>
+        // Populate Category Breakdown Table
+        const categoryBody = document.querySelector("#categoryTable tbody");
+        Object.entries(spentCategories).forEach(([cat, amt]) => {
+          const percentage = totalSpent > 0 ? Math.round((amt / totalSpent) * 100) : 0;
+          const row = `<tr>
+            <td>${cat}</td>
+            <td><strong>₹${amt.toFixed(2)}</strong></td>
+            <td>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span>${percentage}%</span>
+                <div style="flex: 1; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px;">
+                  <div style="width: ${percentage}%; height: 100%; background: var(--primary); border-radius: 3px;"></div>
+                </div>
               </div>
-            </div>
-          </td>
-        </tr>`;
-        categoryBody.insertAdjacentHTML("beforeend", row);
-      });
-    }
+            </td>
+          </tr>`;
+          categoryBody.insertAdjacentHTML("beforeend", row);
+        });
 
-    function displayTransactions(page) {
-      const transactionsBody = document.querySelector("#transactionsTable tbody");
-      transactionsBody.innerHTML = '';
-      
-      allTransactions.forEach(t => {
-        const date = t.created ? new Date(t.created).toLocaleDateString() : 'Unknown date';
-        const typeBadge = t.type === "add"
-          ? '<span class="badge badge-add"><i class="fas fa-plus-circle"></i> Add</span>'
-          : '<span class="badge badge-spent"><i class="fas fa-minus-circle"></i> Spent</span>';
+        // Populate Recent Transactions Table
+        const recentBody = document.querySelector("#recentTable tbody");
+        recent.forEach(t => {
+          const date = new Date(t.created).toLocaleDateString();
+          const typeBadge = t.type === "add"
+            ? '<span class="badge badge-add"><i class="fas fa-plus-circle"></i> Add</span>'
+            : '<span class="badge badge-spent"><i class="fas fa-minus-circle"></i> Spent</span>';
 
-        const description = t.type === "add" 
-          ? `Added via ${t.paidType || 'unknown'}`
-          : `Spent on ${t.category || 'unknown'}`;
+          const description = t.type === "add" 
+            ? `Added via ${t.paidType || 'unknown'}`
+            : `Spent on ${t.category || 'unknown'}`;
 
-        const amount = parseFloat(t.amount) || 0;
-        
-        const row = `<tr>
-          <td>${date}</td>
-          <td>${typeBadge}</td>
-          <td>${description}</td>
-          <td><strong>₹${amount.toFixed(2)}</strong></td>
-        </tr>`;
-        transactionsBody.insertAdjacentHTML("beforeend", row);
-      });
-      
-      // Update page info
-      document.getElementById("pageInfo").textContent = `Page ${page} of ${totalPages}`;
-    }
+          const row = `<tr>
+            <td>${date}</td>
+            <td>${typeBadge}</td>
+            <td>${description}</td>
+            <td><strong>₹${t.amount.toFixed(2)}</strong></td>
+          </tr>`;
+          recentBody.insertAdjacentHTML("beforeend", row);
+        });
 
-    function updatePaginationControls() {
-      document.getElementById("prevPage").disabled = currentPage <= 1;
-      document.getElementById("nextPage").disabled = currentPage >= totalPages;
-    }
-
-    // Event listeners for pagination
-    document.getElementById("prevPage").addEventListener("click", async () => {
-      if (currentPage > 1) {
-        currentPage--;
-        await loadMoreTransactions(currentPage);
-        updatePaginationControls();
-      }
-    });
-
-    document.getElementById("nextPage").addEventListener("click", async () => {
-      if (currentPage < totalPages) {
-        currentPage++;
-        await loadMoreTransactions(currentPage);
-        updatePaginationControls();
-      }
-    });
-
-    async function loadMoreTransactions(page) {
-      try {
-        showLoading();
-        const query = Backendless.DataQueryBuilder.create()
-          .setWhereClause(`roomCode = '${allTransactions[0].roomCode}'`)
-          .setSortBy(["created desc"])
-          .setPageSize(transactionsPerPage)
-          .setOffset((page - 1) * transactionsPerPage);
-        
-        const result = await Backendless.Data.of("Transactions").find(query);
-        allTransactions = result.data || [];
-        displayTransactions(page);
-        hideLoading();
       } catch (err) {
-        console.error("Error loading more transactions:", err);
-        hideLoading();
-        showError("Failed to load more transactions. Please try again.");
+        console.error("Error loading overview:", err);
       }
     }
 
     window.onload = loadOverview;
   </script>
 </body>
-</html>
+</html> 

@@ -520,6 +520,40 @@
     .delay-2 { animation-delay: 0.2s; }
     .delay-3 { animation-delay: 0.3s; }
     .delay-4 { animation-delay: 0.4s; }
+    
+    /* Pagination styles */
+    .pagination {
+      display: flex;
+      justify-content: center;
+      padding: 15px;
+      background: var(--card-bg);
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    .pagination button {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      margin: 0 5px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    
+    .pagination button:hover {
+      background: var(--primary-light);
+    }
+    
+    .pagination button:disabled {
+      background: var(--text-secondary);
+      cursor: not-allowed;
+    }
+    
+    .pagination span {
+      padding: 8px 15px;
+      color: var(--text-primary);
+    }
   </style>
 </head>
 <body>
@@ -586,264 +620,285 @@
       </div>
 
       <div class="table-container animate delay-4">
-        <h3><i class="fas fa-history"></i> Recent Transactions</h3>
-        <table id="recentTable">
+        <h3><i class="fas fa-history"></i> All Transactions</h3>
+        <table id="transactionsTable">
           <thead>
             <tr><th>Date</th><th>Type</th><th>Description</th><th>Amount (₹)</th></tr>
           </thead>
           <tbody></tbody>
         </table>
+        <div class="pagination">
+          <button id="prevPage" disabled>Previous</button>
+          <span id="pageInfo">Page 1 of 1</span>
+          <button id="nextPage" disabled>Next</button>
+        </div>
       </div>
     </div>
   </div>
 
   <script>
-  Backendless.initApp({
-    appId: "3E6C2C39-6779-4034-B008-C3043326DE7A",
-    apiKey: "ACFC4906-9EF5-4356-9F9D-42B8D7397E0B"
-  });
+    Backendless.initApp({
+      appId: "3E6C2C39-6779-4034-B008-C3043326DE7A",
+      apiKey: "ACFC4906-9EF5-4356-9F9D-42B8D7397E0B"
+    });
 
-  async function loadOverview() {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const roomId = params.get("roomId");
-      if (!roomId) {
-        window.location.href = "main.html";
-        return;
-      }
+    // Pagination variables
+    let currentPage = 1;
+    const transactionsPerPage = 10;
+    let totalTransactions = 0;
+    let totalPages = 1;
+    let allTransactions = [];
 
-      const currentUser = await Backendless.UserService.getCurrentUser();
-      if (!currentUser) {
-        window.location.href = "index.html";
-        return;
-      }
+    async function loadOverview() {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const roomId = params.get("roomId");
+        if (!roomId) {
+          window.location.href = "main.html";
+          return;
+        }
 
-      const room = await Backendless.Data.of("Rooms").findById(roomId);
-      if (!room) {
-        window.location.href = "main.html";
-        return;
-      }
+        const currentUser = await Backendless.UserService.getCurrentUser();
+        if (!currentUser) {
+          window.location.href = "index.html";
+          return;
+        }
 
-      // Update room info badges
-      document.getElementById("roomNameBadge").innerHTML = `
-        <i class="fas fa-door-closed"></i>
-        <span>${room.roomName}</span>
-      `;
-      document.getElementById("roomCodeBadge").innerHTML = `
-        <i class="fas fa-key"></i>
-        <span>Code: ${room.roomCode}</span>
-      `;
+        const room = await Backendless.Data.of("Rooms").findById(roomId);
+        if (!room) {
+          window.location.href = "main.html";
+          return;
+        }
 
-      // Check admin role
-      const memberQuery = Backendless.DataQueryBuilder.create()
-        .setWhereClause(`roomCode = '${room.roomCode}' AND userId = '${currentUser.objectId}'`);
-      const members = await Backendless.Data.of("Members").find(memberQuery);
-      const isAdmin = members.length && members[0].role === "admin";
+        // Update room info badges
+        document.getElementById("roomNameBadge").innerHTML = `
+          <i class="fas fa-door-closed"></i>
+          <span>${room.roomName}</span>
+        `;
+        document.getElementById("roomCodeBadge").innerHTML = `
+          <i class="fas fa-key"></i>
+          <span>Code: ${room.roomCode}</span>
+        `;
 
-      // Render sidebar
-      document.querySelector(".sidebar-nav").innerHTML = `
-        <a href="room_dashboard.html?roomId=${roomId}"><i class="fas fa-tachometer-alt"></i> <span>Dashboard</span></a>
-        ${isAdmin ? `<a href="add_money.html?roomId=${roomId}"><i class="fas fa-plus-circle"></i> <span>Add Money</span></a>` : ''}
-        ${isAdmin ? `<a href="spent_money.html?roomId=${roomId}"><i class="fas fa-minus-circle"></i> <span>Spent Money</span></a>` : ''}
-        <a href="transactions.html?roomId=${roomId}"><i class="fas fa-exchange-alt"></i> <span>Transactions</span></a>
-        <a href="overview.html?roomId=${roomId}" class="active"><i class="fas fa-chart-pie"></i> <span>Overview</span></a>
-        <a href="download_pdf.html?roomId=${roomId}"><i class="fas fa-file-pdf"></i> <span>Download PDF</span></a>
-      `;
+        // Check admin role
+        const memberQuery = Backendless.DataQueryBuilder.create()
+          .setWhereClause(`roomCode = '${room.roomCode}' AND userId = '${currentUser.objectId}'`);
+        const members = await Backendless.Data.of("Members").find(memberQuery);
+        const isAdmin = members.length && members[0].role === "admin";
 
-      // Load all transactions
-const query = Backendless.DataQueryBuilder.create()
-  .setWhereClause(`roomCode = '${room.roomCode}'`)
-  .setSortBy(["created desc"])
-  .setPageSize(1000); // Ensure all transactions are loaded
+        // Render sidebar
+        document.querySelector(".sidebar-nav").innerHTML = `
+          <a href="room_dashboard.html?roomId=${roomId}"><i class="fas fa-tachometer-alt"></i> <span>Dashboard</span></a>
+          ${isAdmin ? `<a href="add_money.html?roomId=${roomId}"><i class="fas fa-plus-circle"></i> <span>Add Money</span></a>` : ''}
+          ${isAdmin ? `<a href="spent_money.html?roomId=${roomId}"><i class="fas fa-minus-circle"></i> <span>Spent Money</span></a>` : ''}
+          <a href="transactions.html?roomId=${roomId}"><i class="fas fa-exchange-alt"></i> <span>Transactions</span></a>
+          <a href="overview.html?roomId=${roomId}" class="active"><i class="fas fa-chart-pie"></i> <span>Overview</span></a>
+          <a href="download_pdf.html?roomId=${roomId}"><i class="fas fa-file-pdf"></i> <span>Download PDF</span></a>
+        `;
 
-const transactions = await Backendless.Data.of("Transactions").find(query);
+        // Load all transactions
+        const query = Backendless.DataQueryBuilder.create()
+          .setWhereClause(`roomCode = '${room.roomCode}'`)
+          .setSortBy(["created desc"]);
+        
+        allTransactions = await Backendless.Data.of("Transactions").find(query);
+        totalTransactions = allTransactions.length;
+        totalPages = Math.ceil(totalTransactions / transactionsPerPage);
+        
+        // Update pagination controls
+        updatePaginationControls();
+        
+        // Display first page of transactions
+        displayTransactions(currentPage);
 
-// Initialize counters and data
-let totalAdded = 0,
-    totalSpent = 0;
-let spentCategories = {},
-    monthlyData = {},
-    recent = [];
+        // Calculate totals and categories from all transactions
+        let totalAdded = 0, totalSpent = 0;
+        let spentCategories = {}, monthlyData = {};
 
-// Process each transaction
-transactions.forEach((t) => {
-  if (t.type === "add") {
-    totalAdded += t.amount;
-  } else if (t.type === "spent") {
-    totalSpent += t.amount;
-    spentCategories[t.category] = (spentCategories[t.category] || 0) + t.amount;
+        allTransactions.forEach(t => {
+          if (t.type === "add") {
+            totalAdded += t.amount;
+          } else if (t.type === "spent") {
+            totalSpent += t.amount;
+            spentCategories[t.category] = (spentCategories[t.category] || 0) + t.amount;
 
-    const month = new Date(t.created).toLocaleString('default', { month: 'short', year: 'numeric' });
-    monthlyData[month] = (monthlyData[month] || 0) + t.amount;
-  }
-  recent.push(t); // Push all transactions
-});
+            const month = new Date(t.created).toLocaleString('default', { month: 'short', year: 'numeric' });
+            monthlyData[month] = (monthlyData[month] || 0) + t.amount;
+          }
+        });
 
-// Update dashboard amounts
-const balance = totalAdded - totalSpent;
-document.getElementById("totalAdded").textContent = "₹" + totalAdded.toFixed(2);
-document.getElementById("totalSpent").textContent = "₹" + totalSpent.toFixed(2);
-document.getElementById("balance").textContent = "₹" + balance.toFixed(2);
+        const balance = totalAdded - totalSpent;
+        document.getElementById("totalAdded").textContent = "₹" + totalAdded.toFixed(2);
+        document.getElementById("totalSpent").textContent = "₹" + totalSpent.toFixed(2);
+        document.getElementById("balance").textContent = "₹" + balance.toFixed(2);
 
-// Render Recent Transactions (sorted by latest)
-recent.sort((a, b) => new Date(b.created) - new Date(a.created));
-const recentBody = document.querySelector("#recentTable tbody");
-recentBody.innerHTML = ""; // Clear any previous rows
-
-recent.forEach(t => {
-  const date = new Date(t.created).toLocaleString();
-  const typeBadge = t.type === "add"
-    ? '<span class="badge badge-add"><i class="fas fa-plus-circle"></i> Add</span>'
-    : '<span class="badge badge-spent"><i class="fas fa-minus-circle"></i> Spent</span>';
-
-  const description = t.description || (
-    t.type === "add"
-      ? `Added via ${t.paidType || 'unknown'}`
-      : `Spent on ${t.category || 'unknown'}`
-  );
-
-  const row = `<tr>
-    <td>${date}</td>
-    <td>${typeBadge}</td>
-    <td>${description}</td>
-    <td><strong>₹${t.amount.toFixed(2)}</strong></td>
-  </tr>`;
-  recentBody.insertAdjacentHTML("beforeend", row);
-});
-
-      // Pie chart
-      const pieCtx = document.getElementById("pieChart").getContext("2d");
-      new Chart(pieCtx, {
-        type: "doughnut",
-        data: {
-          labels: Object.keys(spentCategories),
-          datasets: [{
-            data: Object.values(spentCategories),
-            backgroundColor: [
-              "#ef4444", "#f97316", "#eab308", "#10b981",
-              "#3b82f6", "#8b5cf6", "#ec4899", "#14b8a6",
-              "#f43f5e", "#84cc16", "#0ea5e9"
-            ],
-            borderWidth: 0,
-            borderRadius: 6
-          }]
-        },
-        options: {
-          cutout: '70%',
-          plugins: {
-            legend: {
-              position: 'right',
-              labels: {
-                color: "#fff",
-                padding: 20,
+        // Create Pie Chart (Spending by Category)
+        const pieCtx = document.getElementById("pieChart").getContext("2d");
+        new Chart(pieCtx, {
+          type: "doughnut",
+          data: {
+            labels: Object.keys(spentCategories),
+            datasets: [{
+              data: Object.values(spentCategories),
+              backgroundColor: [
+                "#ef4444", "#f97316", "#eab308", "#10b981",
+                "#3b82f6", "#8b5cf6", "#ec4899", "#14b8a6",
+                "#f43f5e", "#84cc16", "#0ea5e9"
+              ],
+              borderWidth: 0,
+              borderRadius: 6
+            }]
+          },
+          options: {
+            cutout: '70%',
+            plugins: {
+              legend: {
+                position: 'right',
+                labels: {
+                  color: "#fff",
+                  padding: 20,
+                  usePointStyle: true,
+                  pointStyle: 'circle'
+                }
+              },
+              tooltip: {
+                backgroundColor: 'rgba(0,0,0,0.8)',
+                titleFont: { size: 14, weight: 'bold' },
+                bodyFont: { size: 12 },
+                padding: 12,
+                cornerRadius: 8,
+                displayColors: true,
                 usePointStyle: true,
-                pointStyle: 'circle'
-              }
-            },
-            tooltip: {
-              backgroundColor: 'rgba(0,0,0,0.8)',
-              callbacks: {
-                label: function(context) {
-                  const label = context.label || '';
-                  const value = context.raw || 0;
-                  const percentage = Math.round((value / totalSpent) * 100);
-                  return `${label}: ₹${value.toFixed(2)} (${percentage}%)`;
+                callbacks: {
+                  label: function(context) {
+                    const label = context.label || '';
+                    const value = context.raw || 0;
+                    const percentage = Math.round((value / totalSpent) * 100);
+                    return `${label}: ₹${value.toFixed(2)} (${percentage}%)`;
+                  }
                 }
               }
             }
           }
-        }
-      });
+        });
 
-      // Bar chart
-      const barCtx = document.getElementById("barChart").getContext("2d");
-      new Chart(barCtx, {
-        type: "bar",
-        data: {
-          labels: Object.keys(monthlyData),
-          datasets: [{
-            label: "Monthly Spend (₹)",
-            data: Object.values(monthlyData),
-            backgroundColor: "#3b82f6",
-            borderRadius: 6,
-            borderSkipped: false
-          }]
-        },
-        options: {
-          responsive: true,
-          scales: {
-            x: {
-              grid: { display: false },
-              ticks: { color: "#94a3b8" }
-            },
-            y: {
-              grid: { color: "rgba(255,255,255,0.1)" },
-              ticks: { color: "#94a3b8" }
-            }
+        // Create Bar Chart (Monthly Spending Trend)
+        const barCtx = document.getElementById("barChart").getContext("2d");
+        new Chart(barCtx, {
+          type: "bar",
+          data: {
+            labels: Object.keys(monthlyData),
+            datasets: [{
+              label: "Monthly Spend (₹)",
+              data: Object.values(monthlyData),
+              backgroundColor: "#3b82f6",
+              borderRadius: 6,
+              borderSkipped: false
+            }]
           },
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              backgroundColor: 'rgba(0,0,0,0.8)'
+          options: {
+            responsive: true,
+            scales: {
+              x: {
+                grid: { display: false },
+                ticks: { color: "#94a3b8" }
+              },
+              y: {
+                grid: { color: "rgba(255,255,255,0.1)" },
+                ticks: { color: "#94a3b8" }
+              }
+            },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: 'rgba(0,0,0,0.8)',
+                titleFont: { size: 14, weight: 'bold' },
+                bodyFont: { size: 12 },
+                padding: 12,
+                cornerRadius: 8
+              }
             }
           }
-        }
-      });
+        });
 
-      // Category Table
-      const categoryBody = document.querySelector("#categoryTable tbody");
-      Object.entries(spentCategories).forEach(([cat, amt]) => {
-        const percentage = totalSpent > 0 ? Math.round((amt / totalSpent) * 100) : 0;
-        const row = `<tr>
-          <td>${cat}</td>
-          <td><strong>₹${amt.toFixed(2)}</strong></td>
-          <td>
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <span>${percentage}%</span>
-              <div style="flex: 1; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px;">
-                <div style="width: ${percentage}%; height: 100%; background: var(--primary); border-radius: 3px;"></div>
+        // Populate Category Breakdown Table
+        const categoryBody = document.querySelector("#categoryTable tbody");
+        Object.entries(spentCategories).forEach(([cat, amt]) => {
+          const percentage = totalSpent > 0 ? Math.round((amt / totalSpent) * 100) : 0;
+          const row = `<tr>
+            <td>${cat}</td>
+            <td><strong>₹${amt.toFixed(2)}</strong></td>
+            <td>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span>${percentage}%</span>
+                <div style="flex: 1; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px;">
+                  <div style="width: ${percentage}%; height: 100%; background: var(--primary); border-radius: 3px;"></div>
+                </div>
               </div>
-            </div>
-          </td>
-        </tr>`;
-        categoryBody.insertAdjacentHTML("beforeend", row);
-      });
+            </td>
+          </tr>`;
+          categoryBody.insertAdjacentHTML("beforeend", row);
+        });
 
-      // Recent Transactions Table
-      const recentBody = document.querySelector("#recentTable tbody");
-recent.sort((a, b) => new Date(b.created) - new Date(a.created)); // Newest first
-
-console.log("Rendering", recent.length, "transactions"); // Debugging log
-
-recent.forEach(t => {
-  const date = new Date(t.created).toLocaleString();
-  const typeBadge = t.type === "add"
-    ? '<span class="badge badge-add"><i class="fas fa-plus-circle"></i> Add</span>'
-    : '<span class="badge badge-spent"><i class="fas fa-minus-circle"></i> Spent</span>';
-
-  const description = t.description || (
-    t.type === "add"
-      ? `Added via ${t.paidType || 'unknown'}`
-      : `Spent on ${t.category || 'unknown'}`
-  );
-
-  const row = `<tr>
-    <td>${date}</td>
-    <td>${typeBadge}</td>
-    <td>${description}</td>
-    <td><strong>₹${t.amount.toFixed(2)}</strong></td>
-  </tr>`;
-  recentBody.insertAdjacentHTML("beforeend", row);
-});
-
-
-    } catch (err) {
-      console.error("Error loading overview:", err);
+      } catch (err) {
+        console.error("Error loading overview:", err);
+      }
     }
-  }
 
-  window.onload = loadOverview;
-</script>
+    function displayTransactions(page) {
+      const startIdx = (page - 1) * transactionsPerPage;
+      const endIdx = Math.min(startIdx + transactionsPerPage, totalTransactions);
+      const pageTransactions = allTransactions.slice(startIdx, endIdx);
+      
+      const transactionsBody = document.querySelector("#transactionsTable tbody");
+      transactionsBody.innerHTML = '';
+      
+      pageTransactions.forEach(t => {
+        const date = new Date(t.created).toLocaleDateString();
+        const typeBadge = t.type === "add"
+          ? '<span class="badge badge-add"><i class="fas fa-plus-circle"></i> Add</span>'
+          : '<span class="badge badge-spent"><i class="fas fa-minus-circle"></i> Spent</span>';
 
+        const description = t.type === "add" 
+          ? `Added via ${t.paidType || 'unknown'}`
+          : `Spent on ${t.category || 'unknown'}`;
+
+        const row = `<tr>
+          <td>${date}</td>
+          <td>${typeBadge}</td>
+          <td>${description}</td>
+          <td><strong>₹${t.amount.toFixed(2)}</strong></td>
+        </tr>`;
+        transactionsBody.insertAdjacentHTML("beforeend", row);
+      });
+      
+      // Update page info
+      document.getElementById("pageInfo").textContent = `Page ${page} of ${totalPages}`;
+    }
+
+    function updatePaginationControls() {
+      document.getElementById("prevPage").disabled = currentPage <= 1;
+      document.getElementById("nextPage").disabled = currentPage >= totalPages;
+    }
+
+    // Event listeners for pagination
+    document.getElementById("prevPage").addEventListener("click", () => {
+      if (currentPage > 1) {
+        currentPage--;
+        displayTransactions(currentPage);
+        updatePaginationControls();
+      }
+    });
+
+    document.getElementById("nextPage").addEventListener("click", () => {
+      if (currentPage < totalPages) {
+        currentPage++;
+        displayTransactions(currentPage);
+        updatePaginationControls();
+      }
+    });
+
+    window.onload = loadOverview;
+  </script>
 </body>
 </html>

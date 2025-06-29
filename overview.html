@@ -777,24 +777,31 @@
 
       // Recent Transactions Table
       const recentBody = document.querySelector("#recentTable tbody");
-      recent.forEach(t => {
-        const date = new Date(t.created).toLocaleDateString();
-        const typeBadge = t.type === "add"
-          ? '<span class="badge badge-add"><i class="fas fa-plus-circle"></i> Add</span>'
-          : '<span class="badge badge-spent"><i class="fas fa-minus-circle"></i> Spent</span>';
+recent.sort((a, b) => new Date(b.created) - new Date(a.created)); // Newest first
 
-        const description = t.type === "add"
-          ? `Added via ${t.paidType || 'unknown'}`
-          : `${t.description || 'Spent on ' + t.category}`;
+console.log("Rendering", recent.length, "transactions"); // Debugging log
 
-        const row = `<tr>
-          <td>${date}</td>
-          <td>${typeBadge}</td>
-          <td>${description}</td>
-          <td><strong>₹${t.amount.toFixed(2)}</strong></td>
-        </tr>`;
-        recentBody.insertAdjacentHTML("beforeend", row);
-      });
+recent.forEach(t => {
+  const date = new Date(t.created).toLocaleString();
+  const typeBadge = t.type === "add"
+    ? '<span class="badge badge-add"><i class="fas fa-plus-circle"></i> Add</span>'
+    : '<span class="badge badge-spent"><i class="fas fa-minus-circle"></i> Spent</span>';
+
+  const description = t.description || (
+    t.type === "add"
+      ? `Added via ${t.paidType || 'unknown'}`
+      : `Spent on ${t.category || 'unknown'}`
+  );
+
+  const row = `<tr>
+    <td>${date}</td>
+    <td>${typeBadge}</td>
+    <td>${description}</td>
+    <td><strong>₹${t.amount.toFixed(2)}</strong></td>
+  </tr>`;
+  recentBody.insertAdjacentHTML("beforeend", row);
+});
+
 
     } catch (err) {
       console.error("Error loading overview:", err);
